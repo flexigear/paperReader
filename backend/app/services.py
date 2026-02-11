@@ -35,22 +35,77 @@ def extract_pages_from_pdf(pdf_path: Path) -> list[tuple[int, str]]:
     pages: list[tuple[int, str]] = []
     for idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
-        clean = re.sub(r"\s+", " ", text).strip()
+        text = text.replace("\r", "\n")
+        text = re.sub(r"[ \t]+", " ", text)
+        clean = re.sub(r"\n{3,}", "\n\n", text).strip()
         pages.append((idx, clean))
     return pages
 
 
 def infer_paper_title(fallback_title: str, pages: list[tuple[int, str]]) -> str:
-    for _, text in pages[:3]:
-        lines = re.split(r"[.\n]|(?<=\))\s+", text)
-        for raw in lines:
-            line = re.sub(r"\s+", " ", raw).strip(" -_:\t")
-            if len(line) < 12 or len(line) > 220:
+    def _clean_line(raw: str) -> str:
+        return re.sub(r"\s+", " ", raw).strip(" -_:\t")
+
+    def _is_author_or_affiliation(line: str) -> bool:
+        lower = line.lower()
+        bad_markers = [
+            "@",
+            "university",
+            "institute",
+            "department",
+            "laboratory",
+            "school of",
+            "college of",
+            "arxiv",
+            "http://",
+            "https://",
+            "corresponding author",
+        ]
+        if any(marker in lower for marker in bad_markers):
+            return True
+        if re.search(r"\b(and|et al\.?)\b", lower) and len(line) < 120:
+            return True
+        if line.count(",") >= 2 and len(line.split()) < 16:
+            return True
+        return False
+
+    def _is_title_like(line: str) -> bool:
+        if len(line) < 16 or len(line) > 200:
+            return False
+        if re.fullmatch(r"[0-9.\- ]+", line):
+            return False
+        if _is_author_or_affiliation(line):
+            return False
+        if not re.search(r"[A-Za-z\u4e00-\u9fff\u3040-\u30ff]", line):
+            return False
+        # Keep lines that look like headline text instead of sentence paragraph.
+        if line.count(".") >= 2:
+            return False
+        return True
+
+    def _safe_title(title: str) -> str:
+        lower = title.lower()
+        if (title.count(",") >= 2 and len(title.split()) < 20) or lower.count(" and ") >= 2:
+            return fallback_title.strip()
+        return title
+
+    for _, text in pages[:2]:
+        raw_lines = [ln for ln in text.split("\n") if ln.strip()]
+        lines = [_clean_line(ln) for ln in raw_lines[:40]]
+        lines = [ln for ln in lines if ln]
+        for idx, line in enumerate(lines):
+            if not _is_title_like(line):
                 continue
-            if re.fullmatch(r"[0-9.\- ]+", line):
-                continue
-            if re.search(r"[A-Za-z\u4e00-\u9fff\u3040-\u30ff]", line):
-                return line
+            if idx + 1 < len(lines):
+                next_line = lines[idx + 1]
+                if (
+                    _is_title_like(next_line)
+                    and not _is_author_or_affiliation(next_line)
+                    and len(line) + len(next_line) <= 200
+                    and not line.endswith((".", "?", "!", ":"))
+                ):
+                    return _safe_title(f"{line} {next_line}")
+            return _safe_title(line)
     return fallback_title.strip()
 
 
