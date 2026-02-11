@@ -17,8 +17,8 @@ try:
 except Exception:  # pragma: no cover
     OpenAI = None
 
-MODEL_SUMMARY = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-4.1")
-MODEL_CHAT = os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini")
+MODEL_SUMMARY = os.getenv("OPENAI_SUMMARY_MODEL", "gpt-5.2-pro")
+MODEL_CHAT = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.2-pro")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
