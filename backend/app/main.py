@@ -49,10 +49,8 @@ def _is_placeholder_summary(summary_json: str | None) -> bool:
         text = str(summary_json).lower()
 
     markers = [
-        "当前未配置可用模型",
         "no model is configured",
         "openai_api_key",
-        "利用可能なモデルが未設定",
     ]
     return any(marker in text for marker in markers)
 
@@ -124,7 +122,7 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
                 status=existing["status"],
                 duplicate=True,
                 duplicate_of=existing["id"],
-                message="该论文已处理过，已复用历史结果。",
+                message="This paper was already processed; previous results reused.",
             )
 
         cursor = conn.execute(
@@ -152,7 +150,7 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
         status="queued",
         duplicate=False,
         duplicate_of=None,
-        message="上传成功，已加入解析队列。",
+        message="Upload accepted and queued for parsing.",
     )
 
 
