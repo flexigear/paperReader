@@ -26,6 +26,14 @@ class ServiceError(Exception):
     pass
 
 
+def _get_openai_client() -> OpenAI:
+    if OpenAI is None:
+        raise ServiceError("OpenAI SDK is unavailable.")
+    if not OPENAI_API_KEY:
+        raise ServiceError("OPENAI_API_KEY is missing.")
+    return OpenAI(api_key=OPENAI_API_KEY)
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -187,28 +195,17 @@ def _trim_text(text: str, max_chars: int = 120000) -> str:
     return text[:max_chars]
 
 
-def _default_summary(title: str) -> dict[str, Any]:
+def _empty_summary() -> dict[str, Any]:
     return {
-        "zh": {
-            "question": f"论文《{title}》要解决的问题尚待模型深入分析。",
-            "solution": "系统已提取论文内容，但当前未配置可用模型。",
-            "findings": "请配置 OPENAI_API_KEY 后重试，以获取高质量总结。",
-        },
-        "en": {
-            "question": f"The exact research question in '{title}' needs model analysis.",
-            "solution": "Paper text has been extracted, but no model is configured.",
-            "findings": "Set OPENAI_API_KEY and re-run for deep summary.",
-        },
-        "ja": {
-            "question": f"論文『{title}』の研究課題はモデル解析が必要です。",
-            "solution": "本文抽出は完了しましたが、利用可能なモデルが未設定です。",
-            "findings": "高品質な要約を得るには OPENAI_API_KEY を設定してください。",
-        },
+        "zh": {"question": "", "solution": "", "findings": ""},
+        "en": {"question": "", "solution": "", "findings": ""},
+        "ja": {"question": "", "solution": "", "findings": ""},
     }
 
 
 def _normalize_summary_shape(summary: dict[str, Any] | None, title: str) -> dict[str, Any]:
-    base = _default_summary(title)
+    _ = title
+    base = _empty_summary()
     incoming = summary or {}
     for lang in ("zh", "en", "ja"):
         src = incoming.get(lang, {})
@@ -317,10 +314,7 @@ def _render_context(chunks: list[sqlite3.Row]) -> str:
 
 
 def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
-    if not OPENAI_API_KEY or OpenAI is None:
-        return _default_summary(title)
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = _get_openai_client()
     prompt = (
         "You are an expert research paper reader. Return JSON only with keys zh, en, ja. "
         "Use English source content as the primary basis for understanding and reasoning first, "
@@ -355,20 +349,7 @@ def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str
     summary = from_json(paper["summary_json"]) or {}
     chunks = retrieve_relevant_chunks(paper["id"], user_message, limit=6)
     source_hint = format_source_hint(chunks)
-
-    if not OPENAI_API_KEY or OpenAI is None:
-        if chunks:
-            preview = chunks[0]["content"][:260]
-            answer = (
-                "当前未配置模型，已返回最相关片段。\n"
-                f"定位：{source_hint}\n"
-                f"片段预览：{preview}"
-            )
-        else:
-            answer = "当前未配置模型，且暂无可检索片段。请先上传并解析论文。"
-        return answer, source_hint
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = _get_openai_client()
     prompt = (
         "You are a research assistant for scientific papers. "
         "Use English source content as the primary basis for understanding and reasoning first. "
@@ -402,43 +383,33 @@ def update_summary_from_discussion(
 ) -> tuple[dict[str, Any], int, str]:
     current_summary = _normalize_summary_shape(from_json(paper["summary_json"]), paper["title"])
     now = now_iso()
-
-    if not OPENAI_API_KEY or OpenAI is None:
-        suffix_zh = f"\n[讨论补充] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
-        suffix_en = f"\n[Discussion] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
-        suffix_ja = f"\n[議論補足] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
-        merged = current_summary
-        merged["zh"]["findings"] = (merged["zh"]["findings"] + suffix_zh).strip()
-        merged["en"]["findings"] = (merged["en"]["findings"] + suffix_en).strip()
-        merged["ja"]["findings"] = (merged["ja"]["findings"] + suffix_ja).strip()
-    else:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        prompt = (
-            "You are updating an existing multilingual paper summary after a user discussion. "
-            "Use English source content as the primary basis for understanding and reasoning first, "
-            "then update multilingual outputs. "
-            "If evidence is insufficient, keep uncertainty explicit and do not fabricate details. "
-            "Return JSON only with keys zh, en, ja; each has question, solution, findings. "
-            "'question' must remain the direct answer to 'What problem does this paper aim to solve?' "
-            "(Chinese meaning: '本论文要解决的问题是什么'). "
-            "It must be declarative, never a question sentence. "
-            "'solution' must remain tightly aligned to that 'question': "
-            "it is the paper-proposed method to solve the summarized target problem, based on paper evidence. "
-            "'findings' must remain aligned to 'solution': "
-            "it states what results were obtained through that solution, based on paper evidence. "
-            "Formatting rules: each field should be 3-6 short lines with clear line breaks; "
-            "avoid one long paragraph and avoid markdown symbols like ## or **. "
-            "Integrate only reliable new insights supported by assistant answer and source hint. "
-            "Keep prior good points and refine wording if needed.\n\n"
-            f"Paper title: {paper['title']}\n"
-            f"Current summary JSON: {json.dumps(current_summary, ensure_ascii=False)}\n"
-            f"User message: {user_message}\n"
-            f"Assistant answer: {assistant_answer}\n"
-            f"Source hint: {source_hint or 'N/A'}\n"
-        )
-        response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
-        parsed = _parse_json_from_text(response.output_text)
-        merged = _normalize_summary_shape(parsed, paper["title"])
+    client = _get_openai_client()
+    prompt = (
+        "You are updating an existing multilingual paper summary after a user discussion. "
+        "Use English source content as the primary basis for understanding and reasoning first, "
+        "then update multilingual outputs. "
+        "If evidence is insufficient, keep uncertainty explicit and do not fabricate details. "
+        "Return JSON only with keys zh, en, ja; each has question, solution, findings. "
+        "'question' must remain the direct answer to 'What problem does this paper aim to solve?' "
+        "(Chinese meaning: '本论文要解决的问题是什么'). "
+        "It must be declarative, never a question sentence. "
+        "'solution' must remain tightly aligned to that 'question': "
+        "it is the paper-proposed method to solve the summarized target problem, based on paper evidence. "
+        "'findings' must remain aligned to 'solution': "
+        "it states what results were obtained through that solution, based on paper evidence. "
+        "Formatting rules: each field should be 3-6 short lines with clear line breaks; "
+        "avoid one long paragraph and avoid markdown symbols like ## or **. "
+        "Integrate only reliable new insights supported by assistant answer and source hint. "
+        "Keep prior good points and refine wording if needed.\n\n"
+        f"Paper title: {paper['title']}\n"
+        f"Current summary JSON: {json.dumps(current_summary, ensure_ascii=False)}\n"
+        f"User message: {user_message}\n"
+        f"Assistant answer: {assistant_answer}\n"
+        f"Source hint: {source_hint or 'N/A'}\n"
+    )
+    response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
+    parsed = _parse_json_from_text(response.output_text)
+    merged = _normalize_summary_shape(parsed, paper["title"])
 
     with get_conn() as conn:
         conn.execute(

@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .db import from_json, get_conn, init_db
 from .schemas import ChatMessageIn, ChatMessageOut, ChatReply, PaperDetail, PaperListItem, UploadPaperResponse
 from .services import (
+    ServiceError,
     build_full_text,
     compute_content_fingerprint,
     extract_pages_from_pdf,
@@ -234,11 +235,17 @@ def chat_with_paper(paper_id: int, req: ChatMessageIn) -> ChatReply:
             (paper_id, "user", req.message, None, now_iso()),
         )
 
-    answer, hint = generate_chat_reply(paper, req.message)
+    try:
+        answer, hint = generate_chat_reply(paper, req.message)
+    except ServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if req.update_summary:
-        merged_summary, summary_version, summary_updated_at = update_summary_from_discussion(
-            paper, req.message, answer, hint
-        )
+        try:
+            merged_summary, summary_version, summary_updated_at = update_summary_from_discussion(
+                paper, req.message, answer, hint
+            )
+        except ServiceError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
     else:
         merged_summary = from_json(paper["summary_json"])
         summary_version = paper["summary_version"] or 0
@@ -311,12 +318,15 @@ def update_summary_from_latest_discussion(paper_id: int) -> PaperDetail:
     if not latest_user or not latest_assistant:
         raise HTTPException(status_code=400, detail="No complete discussion pair found for summary update.")
 
-    update_summary_from_discussion(
-        paper,
-        latest_user["content"],
-        latest_assistant["content"],
-        latest_assistant["source_hint"],
-    )
+    try:
+        update_summary_from_discussion(
+            paper,
+            latest_user["content"],
+            latest_assistant["content"],
+            latest_assistant["source_hint"],
+        )
+    except ServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return get_paper(paper_id)
 
 
