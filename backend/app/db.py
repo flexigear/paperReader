@@ -22,6 +22,8 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS papers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
+                canonical_title TEXT,
+                content_fingerprint TEXT,
                 filename TEXT NOT NULL,
                 filepath TEXT NOT NULL,
                 status TEXT NOT NULL,
@@ -49,6 +51,10 @@ def init_db() -> None:
         )
         _ensure_column(conn, "papers", "summary_version", "summary_version INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "papers", "summary_updated_at", "summary_updated_at TEXT")
+        _ensure_column(conn, "papers", "canonical_title", "canonical_title TEXT")
+        _ensure_column(conn, "papers", "content_fingerprint", "content_fingerprint TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_papers_fingerprint ON papers(content_fingerprint)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_papers_canonical_title ON papers(canonical_title)")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (

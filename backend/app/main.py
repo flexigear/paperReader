@@ -8,7 +8,17 @@ from fastapi.staticfiles import StaticFiles
 
 from .db import from_json, get_conn, init_db
 from .schemas import ChatMessageIn, ChatMessageOut, ChatReply, PaperDetail, PaperListItem, UploadPaperResponse
-from .services import generate_chat_reply, now_iso, process_paper, update_summary_from_discussion
+from .services import (
+    build_full_text,
+    compute_content_fingerprint,
+    extract_pages_from_pdf,
+    generate_chat_reply,
+    infer_paper_title,
+    normalize_title,
+    now_iso,
+    process_paper,
+    update_summary_from_discussion,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 UPLOAD_DIR = ROOT / "data" / "uploads"
@@ -41,19 +51,91 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
     content = await file.read()
     save_path.write_bytes(content)
 
-    title = Path(file.filename).stem
+    fallback_title = Path(file.filename).stem
+    try:
+        pages = extract_pages_from_pdf(save_path)
+        full_text = build_full_text(pages)
+        title = infer_paper_title(fallback_title, pages)
+        canonical_title = normalize_title(title)
+        content_fingerprint = compute_content_fingerprint(full_text)
+    except Exception:
+        title = fallback_title
+        canonical_title = normalize_title(title)
+        content_fingerprint = ""
+
     with get_conn() as conn:
+        existing = None
+        if content_fingerprint:
+            existing = conn.execute(
+                """
+                SELECT id, title, status FROM papers
+                WHERE content_fingerprint = ?
+                ORDER BY CASE status
+                    WHEN 'completed' THEN 0
+                    WHEN 'processing' THEN 1
+                    WHEN 'queued' THEN 2
+                    ELSE 3
+                END, id DESC
+                LIMIT 1
+                """,
+                (content_fingerprint,),
+            ).fetchone()
+        if not existing and canonical_title:
+            existing = conn.execute(
+                """
+                SELECT id, title, status FROM papers
+                WHERE canonical_title = ?
+                  AND status IN ('queued', 'processing', 'completed')
+                ORDER BY CASE status
+                    WHEN 'completed' THEN 0
+                    WHEN 'processing' THEN 1
+                    WHEN 'queued' THEN 2
+                    ELSE 3
+                END, id DESC
+                LIMIT 1
+                """,
+                (canonical_title,),
+            ).fetchone()
+
+        if existing:
+            if save_path.exists():
+                save_path.unlink(missing_ok=True)
+            return UploadPaperResponse(
+                id=existing["id"],
+                title=existing["title"],
+                status=existing["status"],
+                duplicate=True,
+                duplicate_of=existing["id"],
+                message="该论文已处理过，已复用历史结果。",
+            )
+
         cursor = conn.execute(
             """
-            INSERT INTO papers (title, filename, filepath, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO papers (title, canonical_title, content_fingerprint, filename, filepath, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (title, file.filename, str(save_path), "queued", now_iso(), now_iso()),
+            (
+                title,
+                canonical_title,
+                content_fingerprint if content_fingerprint else None,
+                file.filename,
+                str(save_path),
+                "queued",
+                now_iso(),
+                now_iso(),
+            ),
         )
         paper_id = cursor.lastrowid
 
     background_tasks.add_task(process_paper, paper_id)
-    return UploadPaperResponse(id=paper_id, title=title, status="queued")
+    return UploadPaperResponse(
+        id=paper_id,
+        title=title,
+        status="queued",
+        duplicate=False,
+        duplicate_of=None,
+        message="上传成功，已加入解析队列。",
+    )
 
 
 @app.get("/api/papers", response_model=list[PaperListItem])

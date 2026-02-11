@@ -6,6 +6,9 @@ class UploadPaperResponse(BaseModel):
     id: int
     title: str
     status: str
+    duplicate: bool = False
+    duplicate_of: int | None = None
+    message: str | None = None
 
 
 class PaperListItem(BaseModel):

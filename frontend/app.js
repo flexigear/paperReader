@@ -160,9 +160,19 @@ async function uploadSelectedFile(file) {
     });
     selectedPaperId = result.id;
     bindPaperViewer(result.id, result.title);
-    uploadStatus.textContent = `已上传：${result.title}，正在解析（queued）。`;
+    uploadStatus.textContent = result.duplicate
+      ? `已过滤重复论文：${result.title}（复用已有结果）`
+      : `已上传：${result.title}，正在解析（queued）。`;
     await loadPaperList();
-    await startStatusPoll(result.id);
+    if (result.status === 'completed') {
+      await selectPaper(result.id);
+      switchTab('results');
+    } else if (result.status === 'queued' || result.status === 'processing') {
+      await startStatusPoll(result.id);
+    } else {
+      switchTab('results');
+      await selectPaper(result.id);
+    }
   } catch (error) {
     uploadStatus.textContent = `上传失败：${error.message}`;
   } finally {

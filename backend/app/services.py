@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sqlite3
+from hashlib import sha256
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +38,33 @@ def extract_pages_from_pdf(pdf_path: Path) -> list[tuple[int, str]]:
         clean = re.sub(r"\s+", " ", text).strip()
         pages.append((idx, clean))
     return pages
+
+
+def infer_paper_title(fallback_title: str, pages: list[tuple[int, str]]) -> str:
+    for _, text in pages[:3]:
+        lines = re.split(r"[.\n]|(?<=\))\s+", text)
+        for raw in lines:
+            line = re.sub(r"\s+", " ", raw).strip(" -_:\t")
+            if len(line) < 12 or len(line) > 220:
+                continue
+            if re.fullmatch(r"[0-9.\- ]+", line):
+                continue
+            if re.search(r"[A-Za-z\u4e00-\u9fff\u3040-\u30ff]", line):
+                return line
+    return fallback_title.strip()
+
+
+def normalize_title(title: str) -> str:
+    lowered = title.lower().strip()
+    normalized = re.sub(r"[^a-z0-9\u4e00-\u9fff\u3040-\u30ff]+", " ", lowered)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def compute_content_fingerprint(full_text: str) -> str:
+    normalized = re.sub(r"[^a-z0-9\u4e00-\u9fff\u3040-\u30ff]+", "", full_text.lower())
+    if len(normalized) > 500000:
+        normalized = normalized[:500000]
+    return sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def build_full_text(pages: Iterable[tuple[int, str]]) -> str:
@@ -365,6 +393,8 @@ def process_paper(paper_id: int) -> None:
     try:
         pages = extract_pages_from_pdf(Path(paper["filepath"]))
         full_text = build_full_text(pages)
+        canonical_title = normalize_title(infer_paper_title(paper["title"], pages))
+        fingerprint = compute_content_fingerprint(full_text)
         chunks = build_chunks(pages)
         summary = summarize_paper(paper["title"], full_text)
 
@@ -375,13 +405,15 @@ def process_paper(paper_id: int) -> None:
                 UPDATE papers
                 SET status = ?,
                     full_text = ?,
+                    canonical_title = ?,
+                    content_fingerprint = ?,
                     summary_json = ?,
                     summary_version = COALESCE(summary_version, 0) + 1,
                     summary_updated_at = ?,
                     updated_at = ?
                 WHERE id = ?
                 """,
-                ("completed", full_text, to_json(summary), now_iso(), now_iso(), paper_id),
+                ("completed", full_text, canonical_title, fingerprint, to_json(summary), now_iso(), now_iso(), paper_id),
             )
     except Exception as exc:  # pragma: no cover
         with get_conn() as conn:
