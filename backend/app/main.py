@@ -1,10 +1,11 @@
+import io
 import json
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .db import from_json, get_conn, init_db
@@ -14,12 +15,14 @@ from .services import (
     build_full_text,
     compute_content_fingerprint,
     extract_pages_from_pdf,
+    get_pdf_page_count,
     generate_chat_reply,
     infer_paper_title,
     normalize_title,
     now_iso,
     process_paper,
     update_summary_from_discussion,
+    render_single_page_pdf,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -177,6 +180,11 @@ def get_paper(paper_id: int) -> PaperDetail:
         row = conn.execute("SELECT * FROM papers WHERE id = ?", (paper_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Paper not found")
+    page_count = None
+    try:
+        page_count = get_pdf_page_count(Path(row["filepath"]))
+    except Exception:
+        page_count = None
     return PaperDetail(
         id=row["id"],
         title=row["title"],
@@ -185,6 +193,7 @@ def get_paper(paper_id: int) -> PaperDetail:
         summary=from_json(row["summary_json"]),
         summary_version=row["summary_version"] or 0,
         summary_updated_at=datetime.fromisoformat(row["summary_updated_at"]) if row["summary_updated_at"] else None,
+        page_count=page_count,
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
     )
@@ -199,6 +208,24 @@ def get_paper_pdf(paper_id: int) -> FileResponse:
     safe_filename = row["filename"].replace('"', "")
     return FileResponse(
         path=row["filepath"],
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{safe_filename}"'},
+    )
+
+
+@app.get("/api/papers/{paper_id}/pdf/page/{page_no}")
+def get_paper_pdf_page(paper_id: int, page_no: int) -> StreamingResponse:
+    with get_conn() as conn:
+        row = conn.execute("SELECT filepath, filename FROM papers WHERE id = ?", (paper_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    safe_filename = row["filename"].replace('"', "")
+    try:
+        content = render_single_page_pdf(Path(row["filepath"]), page_no)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return StreamingResponse(
+        io.BytesIO(content),
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{safe_filename}"'},
     )

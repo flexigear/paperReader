@@ -90,12 +90,29 @@ button:hover {
   filter: brightness(1.05);
 }
 
-#pdfViewer {
-  width: 100%;
-  min-height: 70vh;
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+.paper-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 12px;
+}
+
+.paper-toolbar input {
+  width: 90px;
+  padding: 8px 10px;
   border: 1px solid #d8e1dc;
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 6px;
+}
+
+.paper-page-label {
+  color: var(--muted);
 }
 
 .paper-list {
@@ -168,6 +185,17 @@ button:hover {
   border: 1px solid #d8e1dc;
   border-radius: 10px;
   padding: 14px;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-head h3 {
+  margin: 0;
 }
 
 #summaryMeta {
@@ -293,4 +321,11 @@ button:hover {
   #pdfViewer {
     min-height: 55vh;
   }
+}
+#pdfViewer {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid #d8e1dc;
+  border-radius: 10px;
+  background: #fff;
 }

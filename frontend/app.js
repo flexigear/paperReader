@@ -8,15 +8,23 @@ const pdfViewer = document.getElementById('pdfViewer');
 const paperTitle = document.getElementById('paperTitle');
 const detail = document.getElementById('detail');
 const detailTitle = document.getElementById('detailTitle');
+const detailCloseBtn = document.getElementById('detailCloseBtn');
 const summaryMeta = document.getElementById('summaryMeta');
 const refreshSummaryBtn = document.getElementById('refreshSummaryBtn');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const chatBox = document.getElementById('chatBox');
 const updateSummaryBtn = document.getElementById('updateSummaryBtn');
+const paperPrevBtn = document.getElementById('paperPrevBtn');
+const paperNextBtn = document.getElementById('paperNextBtn');
+const paperPageInput = document.getElementById('paperPageInput');
+const paperOpenNewBtn = document.getElementById('paperOpenNewBtn');
+const paperPageTotal = document.getElementById('paperPageTotal');
 
 let selectedPaperId = null;
 let statusPollTimer = null;
+let currentPdfPage = 1;
+let totalPdfPages = null;
 
 const summaryFields = {
   zh: {
@@ -68,6 +76,58 @@ function setSummaryMeta(version, updatedAt) {
   }
   const timeText = updatedAt ? new Date(updatedAt).toLocaleString() : '-';
   summaryMeta.textContent = `总结版本：v${version}，最近更新：${timeText}`;
+}
+
+function buildPdfPageUrl(paperId, page) {
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  return `/api/papers/${paperId}/pdf/page/${safePage}?t=${Date.now()}`;
+}
+
+function buildPdfFullUrl(paperId) {
+  return `/api/papers/${paperId}/pdf`;
+}
+
+function updatePdfNavState() {
+  const hasDoc = !!selectedPaperId;
+  const isFirst = currentPdfPage <= 1;
+  const hasTotal = Number.isFinite(totalPdfPages) && totalPdfPages > 0;
+  const isLast = hasTotal && currentPdfPage >= totalPdfPages;
+  paperPrevBtn.disabled = !hasDoc || isFirst;
+  paperNextBtn.disabled = !hasDoc || isLast;
+}
+
+function setPdfTotalPages(pages) {
+  if (Number.isFinite(pages) && pages > 0) {
+    totalPdfPages = Math.floor(pages);
+    paperPageTotal.textContent = `/ ${totalPdfPages}`;
+    paperPageInput.max = String(totalPdfPages);
+  } else {
+    totalPdfPages = null;
+    paperPageTotal.textContent = '/ -';
+    paperPageInput.removeAttribute('max');
+  }
+  updatePdfNavState();
+}
+
+function setPdfPage(page) {
+  if (!selectedPaperId) return;
+  let safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : currentPdfPage;
+  if (Number.isFinite(totalPdfPages) && totalPdfPages > 0) {
+    safePage = Math.min(safePage, totalPdfPages);
+  }
+  if (safePage < 1) safePage = 1;
+  currentPdfPage = safePage;
+  paperPageInput.value = String(safePage);
+  const nextUrl = buildPdfPageUrl(selectedPaperId, safePage);
+  if (pdfViewer.src === nextUrl) {
+    pdfViewer.src = 'about:blank';
+    setTimeout(() => {
+      pdfViewer.src = nextUrl;
+    }, 0);
+  } else {
+    pdfViewer.src = nextUrl;
+  }
+  updatePdfNavState();
 }
 
 function addChatLine(role, content, sourceHint = null) {
@@ -140,7 +200,11 @@ async function loadPaperList() {
 
 function bindPaperViewer(paperId, title) {
   paperTitle.textContent = title;
-  pdfViewer.src = `/api/papers/${paperId}/pdf`;
+  currentPdfPage = 1;
+  paperPageInput.value = '1';
+  updatePdfNavState();
+  const pdfUrl = buildPdfPageUrl(paperId, 1);
+  pdfViewer.src = pdfUrl;
 }
 
 function clearStatusPoll() {
@@ -182,7 +246,7 @@ async function selectPaper(paperId) {
   detailTitle.textContent = `${paper.title} (${paper.status})`;
   setSummary(paper.summary);
   setSummaryMeta(paper.summary_version, paper.summary_updated_at);
-
+  setPdfTotalPages(paper.page_count);
   bindPaperViewer(paperId, paper.title);
 
   chatBox.innerHTML = '';
@@ -195,6 +259,7 @@ async function uploadSelectedFile(file) {
 
   clearStatusPoll();
   uploadStatus.textContent = '上传中...';
+  setPdfTotalPages(null);
   const formData = new FormData();
   formData.append('file', file);
 
@@ -231,6 +296,42 @@ uploadBtn.addEventListener('click', () => {
 pdfInput.addEventListener('change', async () => {
   const file = pdfInput.files?.[0];
   await uploadSelectedFile(file);
+});
+
+detailCloseBtn.addEventListener('click', () => {
+  detail.classList.add('hidden');
+});
+
+paperPrevBtn.addEventListener('click', () => {
+  setPdfPage(currentPdfPage - 1);
+});
+
+paperNextBtn.addEventListener('click', () => {
+  setPdfPage(currentPdfPage + 1);
+});
+
+paperPageInput.addEventListener('change', () => {
+  const nextPage = Number.parseInt(paperPageInput.value, 10);
+  setPdfPage(nextPage);
+});
+
+paperPageInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const nextPage = Number.parseInt(paperPageInput.value, 10);
+    setPdfPage(nextPage);
+  }
+});
+
+paperOpenNewBtn.addEventListener('click', () => {
+  if (!selectedPaperId) return;
+  const url = buildPdfFullUrl(selectedPaperId);
+  window.open(url, '_blank', 'noopener');
+});
+
+window.addEventListener('resize', () => {
+  if (!selectedPaperId) return;
+  setPdfPage(currentPdfPage);
 });
 
 refreshSummaryBtn.addEventListener('click', async () => {

@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import re
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader
+from pypdf import PdfWriter
 
 from .db import from_json, get_conn, to_json
 
@@ -48,6 +50,23 @@ def extract_pages_from_pdf(pdf_path: Path) -> list[tuple[int, str]]:
         clean = re.sub(r"\n{3,}", "\n\n", text).strip()
         pages.append((idx, clean))
     return pages
+
+
+def get_pdf_page_count(pdf_path: Path) -> int:
+    reader = PdfReader(str(pdf_path))
+    return len(reader.pages)
+
+
+def render_single_page_pdf(pdf_path: Path, page_no: int) -> bytes:
+    reader = PdfReader(str(pdf_path))
+    total = len(reader.pages)
+    if page_no < 1 or page_no > total:
+        raise ValueError("page out of range")
+    writer = PdfWriter()
+    writer.add_page(reader.pages[page_no - 1])
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    return buffer.getvalue()
 
 
 def infer_paper_title(fallback_title: str, pages: list[tuple[int, str]]) -> str:

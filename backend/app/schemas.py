@@ -27,6 +27,7 @@ class PaperDetail(BaseModel):
     summary: dict | None
     summary_version: int
     summary_updated_at: datetime | None
+    page_count: int | None = None
     created_at: datetime
     updated_at: datetime
 
