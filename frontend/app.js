@@ -63,8 +63,15 @@ function setSummaryMeta(version, updatedAt) {
 function addChatLine(role, content, sourceHint = null) {
   const line = document.createElement('div');
   line.className = `chat-line ${role}`;
-  const bubble = document.createElement('span');
-  bubble.textContent = sourceHint ? `${content}\n(${sourceHint})` : content;
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  bubble.textContent = content;
+  if (sourceHint) {
+    const source = document.createElement('div');
+    source.className = 'chat-source';
+    source.textContent = sourceHint;
+    bubble.appendChild(source);
+  }
   line.appendChild(bubble);
   chatBox.appendChild(line);
   chatBox.scrollTop = chatBox.scrollHeight;
