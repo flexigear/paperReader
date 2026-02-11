@@ -43,12 +43,26 @@ function switchTab(targetId) {
 
 tabs.forEach((tab) => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
 
+function formatSummaryText(raw) {
+  const input = typeof raw === 'string' ? raw : '';
+  if (!input.trim()) return '-';
+
+  let text = input.replace(/\r\n/g, '\n').trim();
+  text = text.replace(/^\s*#{1,6}\s*/gm, '');
+  text = text.replace(/\*\*/g, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.replace(/\s+##\s+/g, '\n\n');
+  text = text.replace(/([。.!?])\s+-\s+/g, '$1\n- ');
+  text = text.replace(/\s+\(\d+\)\s+/g, '\n$&');
+  return text.trim();
+}
+
 function setSummary(summary) {
   ['zh', 'en', 'ja'].forEach((lang) => {
     const block = summary?.[lang] || {};
-    summaryFields[lang].question.textContent = block.question || '-';
-    summaryFields[lang].solution.textContent = block.solution || '-';
-    summaryFields[lang].findings.textContent = block.findings || '-';
+    summaryFields[lang].question.textContent = formatSummaryText(block.question);
+    summaryFields[lang].solution.textContent = formatSummaryText(block.solution);
+    summaryFields[lang].findings.textContent = formatSummaryText(block.findings);
   });
 }
 
