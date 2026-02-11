@@ -21,10 +21,10 @@
     <main>
       <section id="upload" class="panel active">
         <h2>上传论文 PDF</h2>
-        <form id="uploadForm">
-          <input id="pdfFile" type="file" accept="application/pdf" required />
-          <button type="submit">上传并解析</button>
-        </form>
+        <div id="uploadForm">
+          <input id="pdfFile" type="file" accept="application/pdf" hidden />
+          <button id="uploadBtn" type="button">上传 paper</button>
+        </div>
         <p id="uploadStatus"></p>
       </section>
 

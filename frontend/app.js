@@ -1,6 +1,6 @@
 const tabs = document.querySelectorAll('.tab');
 const panels = document.querySelectorAll('.panel');
-const uploadForm = document.getElementById('uploadForm');
+const uploadBtn = document.getElementById('uploadBtn');
 const pdfInput = document.getElementById('pdfFile');
 const uploadStatus = document.getElementById('uploadStatus');
 const paperList = document.getElementById('paperList');
@@ -145,11 +145,10 @@ async function selectPaper(paperId) {
   messages.forEach((m) => addChatLine(m.role, m.content, m.source_hint));
 }
 
-uploadForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const file = pdfInput.files?.[0];
+async function uploadSelectedFile(file) {
   if (!file) return;
 
+  clearStatusPoll();
   uploadStatus.textContent = '上传中...';
   const formData = new FormData();
   formData.append('file', file);
@@ -167,7 +166,18 @@ uploadForm.addEventListener('submit', async (event) => {
     await startStatusPoll(result.id);
   } catch (error) {
     uploadStatus.textContent = `上传失败：${error.message}`;
+  } finally {
+    pdfInput.value = '';
   }
+}
+
+uploadBtn.addEventListener('click', () => {
+  pdfInput.click();
+});
+
+pdfInput.addEventListener('change', async () => {
+  const file = pdfInput.files?.[0];
+  await uploadSelectedFile(file);
 });
 
 refreshSummaryBtn.addEventListener('click', async () => {
