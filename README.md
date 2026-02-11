@@ -7,9 +7,9 @@ AI 论文阅读器（Web 版）原型项目。
 - 上传 PDF 论文（PC/Android/iPhone 浏览器均可）。
 - 服务端接收论文并异步解析文本。
 - 调用模型生成中/英/日三语总结：
-  - 问题是什么（What is the question?）
-  - 解决方法（What is the solution?）
-  - 发现了什么（What are the findings?）
+  - 遇到什么问题（回答式描述）
+  - 如何解决该问题（回答式描述）
+  - 发现了什么（回答式描述）
 - 三选项卡 UI：
   - `UPLOAD`：上传论文
   - `PAPER`：查看当前论文原文

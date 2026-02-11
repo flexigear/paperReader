@@ -324,7 +324,11 @@ def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
     prompt = (
         "You are an expert research paper reader. Return JSON only with keys zh, en, ja. "
         "Each language object must include: question, solution, findings. "
-        "Use concise but deep explanation.\n\n"
+        "'question' means the answered description of the problem addressed by the paper, "
+        "NOT an interrogative sentence. "
+        "'solution' explains how the paper solves that problem. "
+        "'findings' explains what was discovered/validated. "
+        "Do not output questions like 'What is ...?'; output declarative answers.\n\n"
         f"Paper title: {title}\n\n"
         "Paper content:\n"
         f"{_trim_text(full_text)}"
@@ -391,6 +395,8 @@ def update_summary_from_discussion(
         prompt = (
             "You are updating an existing multilingual paper summary after a user discussion. "
             "Return JSON only with keys zh, en, ja; each has question, solution, findings. "
+            "'question' must remain an answered problem statement (declarative), not a question sentence. "
+            "'solution' and 'findings' are also answer-style statements. "
             "Integrate only reliable new insights supported by assistant answer and source hint. "
             "Keep prior good points and refine wording if needed.\n\n"
             f"Paper title: {paper['title']}\n"
