@@ -108,6 +108,7 @@ button:hover {
 .paper-item {
   width: 100%;
   background: #fff;
+  color: var(--ink);
   border: 1px solid #d8e1dc;
   border-radius: 8px;
   padding: 10px 12px;
