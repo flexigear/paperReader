@@ -56,6 +56,10 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 打开 `http://localhost:8000`。
 
+## CI
+
+Push/PR 会自动运行 `pytest`，并在 Actions Summary 中展示测试报告。
+
 ## Debian 后台脚本
 
 ```bash
