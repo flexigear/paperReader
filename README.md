@@ -61,6 +61,7 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 cd /mnt/projects/paperReader
 scripts/paperreader-start.sh     # 后台启动
 scripts/paperreader-status.sh    # 查看状态
+scripts/paperreader-restart.sh   # 重启服务
 scripts/paperreader-stop.sh      # 停止服务
 ```
 
