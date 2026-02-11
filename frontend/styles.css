@@ -108,18 +108,46 @@ button:hover {
 .paper-item {
   width: 100%;
   background: #fff;
-  color: var(--ink);
   border: 1px solid #d8e1dc;
   border-radius: 8px;
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+}
+
+.paper-open-btn {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  color: var(--ink);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   text-align: left;
-  cursor: pointer;
 }
 
-.paper-item small {
+.paper-open-btn:hover {
+  background: #f2f7f5;
+  filter: none;
+}
+
+.paper-delete-btn {
+  flex-shrink: 0;
+  background: #b63434;
+  color: #fff;
+  padding: 8px 12px;
+}
+
+.paper-delete-btn:hover {
+  background: #a02a2a;
+  filter: none;
+}
+
+.paper-open-btn small {
   color: var(--muted);
   margin-left: 12px;
   flex-shrink: 0;

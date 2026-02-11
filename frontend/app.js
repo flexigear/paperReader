@@ -84,12 +84,40 @@ async function loadPaperList() {
   paperList.innerHTML = '';
 
   papers.forEach((paper) => {
-    const item = document.createElement('button');
-    item.className = 'paper-item';
-    item.type = 'button';
-    item.innerHTML = `<span class="paper-title" title="${paper.title}">${paper.title}</span><small>${paper.status}</small>`;
-    item.addEventListener('click', () => selectPaper(paper.id));
-    paperList.appendChild(item);
+    const row = document.createElement('div');
+    row.className = 'paper-item';
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'paper-open-btn';
+    openBtn.type = 'button';
+    openBtn.innerHTML = `<span class="paper-title" title="${paper.title}">${paper.title}</span><small>${paper.status}</small>`;
+    openBtn.addEventListener('click', () => selectPaper(paper.id));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'paper-delete-btn';
+    delBtn.type = 'button';
+    delBtn.textContent = '删除';
+    delBtn.addEventListener('click', async () => {
+      const ok = window.confirm(`确认删除论文：${paper.title}？`);
+      if (!ok) return;
+      try {
+        await fetchJson(`/api/papers/${paper.id}`, { method: 'DELETE' });
+        if (selectedPaperId === paper.id) {
+          selectedPaperId = null;
+          detail.classList.add('hidden');
+          chatBox.innerHTML = '';
+          pdfViewer.src = 'about:blank';
+          paperTitle.textContent = '论文原文';
+        }
+        await loadPaperList();
+      } catch (error) {
+        uploadStatus.textContent = `删除失败：${error.message}`;
+      }
+    });
+
+    row.appendChild(openBtn);
+    row.appendChild(delBtn);
+    paperList.appendChild(row);
   });
 }
 

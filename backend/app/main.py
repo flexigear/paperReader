@@ -251,4 +251,22 @@ def refresh_summary(paper_id: int, background_tasks: BackgroundTasks) -> PaperDe
     return get_paper(paper_id)
 
 
+@app.delete("/api/papers/{paper_id}")
+def delete_paper(paper_id: int) -> dict[str, int | str]:
+    with get_conn() as conn:
+        row = conn.execute("SELECT filepath FROM papers WHERE id = ?", (paper_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Paper not found")
+
+        conn.execute("DELETE FROM messages WHERE paper_id = ?", (paper_id,))
+        conn.execute("DELETE FROM chunks WHERE paper_id = ?", (paper_id,))
+        conn.execute("DELETE FROM papers WHERE id = ?", (paper_id,))
+
+    file_path = Path(row["filepath"])
+    if file_path.exists():
+        file_path.unlink(missing_ok=True)
+
+    return {"deleted_id": paper_id, "message": "Paper deleted"}
+
+
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
