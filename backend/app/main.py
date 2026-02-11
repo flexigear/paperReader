@@ -256,6 +256,47 @@ def refresh_summary(paper_id: int, background_tasks: BackgroundTasks) -> PaperDe
     return get_paper(paper_id)
 
 
+@app.post("/api/papers/{paper_id}/update-summary-from-discussion", response_model=PaperDetail)
+def update_summary_from_latest_discussion(paper_id: int) -> PaperDetail:
+    with get_conn() as conn:
+        paper = conn.execute("SELECT * FROM papers WHERE id = ?", (paper_id,)).fetchone()
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+
+        rows = conn.execute(
+            """
+            SELECT id, role, content, source_hint
+            FROM messages
+            WHERE paper_id = ?
+            ORDER BY id DESC
+            LIMIT 50
+            """,
+            (paper_id,),
+        ).fetchall()
+
+    latest_assistant = None
+    latest_user = None
+    for row in rows:
+        if row["role"] == "assistant" and latest_assistant is None:
+            latest_assistant = row
+            continue
+        if row["role"] == "user":
+            if latest_assistant is None or row["id"] < latest_assistant["id"]:
+                latest_user = row
+                break
+
+    if not latest_user or not latest_assistant:
+        raise HTTPException(status_code=400, detail="No complete discussion pair found for summary update.")
+
+    update_summary_from_discussion(
+        paper,
+        latest_user["content"],
+        latest_assistant["content"],
+        latest_assistant["source_hint"],
+    )
+    return get_paper(paper_id)
+
+
 @app.delete("/api/papers/{paper_id}")
 def delete_paper(paper_id: int) -> dict[str, int | str]:
     with get_conn() as conn:

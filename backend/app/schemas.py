@@ -33,7 +33,7 @@ class PaperDetail(BaseModel):
 
 class ChatMessageIn(BaseModel):
     message: str
-    update_summary: bool = True
+    update_summary: bool = False
 
 
 class ChatMessageOut(BaseModel):
