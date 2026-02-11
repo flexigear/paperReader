@@ -87,7 +87,7 @@ async function loadPaperList() {
     const item = document.createElement('button');
     item.className = 'paper-item';
     item.type = 'button';
-    item.innerHTML = `<div title="${paper.title}">${paper.title}</div><small>${paper.status}</small>`;
+    item.innerHTML = `<span class="paper-title" title="${paper.title}">${paper.title}</span><small>${paper.status}</small>`;
     item.addEventListener('click', () => selectPaper(paper.id));
     paperList.appendChild(item);
   });
