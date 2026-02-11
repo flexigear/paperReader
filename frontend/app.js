@@ -13,9 +13,11 @@ const refreshSummaryBtn = document.getElementById('refreshSummaryBtn');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const chatBox = document.getElementById('chatBox');
+const summaryUpdateToggle = document.getElementById('summaryUpdateToggle');
 
 let selectedPaperId = null;
 let statusPollTimer = null;
+let updateSummaryFromDiscussion = true;
 
 const summaryFields = {
   zh: {
@@ -58,6 +60,11 @@ function setSummaryMeta(version, updatedAt) {
   }
   const timeText = updatedAt ? new Date(updatedAt).toLocaleString() : '-';
   summaryMeta.textContent = `总结版本：v${version}，最近更新：${timeText}`;
+}
+
+function renderSummaryToggle() {
+  summaryUpdateToggle.textContent = `讨论后更新总结：${updateSummaryFromDiscussion ? '开' : '关'}`;
+  summaryUpdateToggle.classList.toggle('toggle-off', !updateSummaryFromDiscussion);
 }
 
 function addChatLine(role, content, sourceHint = null) {
@@ -241,7 +248,7 @@ chatForm.addEventListener('submit', async (event) => {
     const data = await fetchJson(`/api/papers/${selectedPaperId}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, update_summary: updateSummaryFromDiscussion }),
     });
     addChatLine('assistant', data.answer.content, data.answer.source_hint);
     setSummary(data.summary);
@@ -250,6 +257,13 @@ chatForm.addEventListener('submit', async (event) => {
     addChatLine('assistant', `请求失败：${error.message}`);
   }
 });
+
+summaryUpdateToggle.addEventListener('click', () => {
+  updateSummaryFromDiscussion = !updateSummaryFromDiscussion;
+  renderSummaryToggle();
+});
+
+renderSummaryToggle();
 
 loadPaperList().catch((err) => {
   uploadStatus.textContent = `初始化失败：${err.message}`;

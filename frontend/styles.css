@@ -254,6 +254,14 @@ button:hover {
   font-size: 12px;
 }
 
+#summaryUpdateToggle {
+  background: #2f7f66;
+}
+
+#summaryUpdateToggle.toggle-off {
+  background: #9aa4ae;
+}
+
 #chatInput {
   flex: 1;
   min-width: 220px;

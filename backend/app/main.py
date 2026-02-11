@@ -212,9 +212,14 @@ def chat_with_paper(paper_id: int, req: ChatMessageIn) -> ChatReply:
         )
 
     answer, hint = generate_chat_reply(paper, req.message)
-    merged_summary, summary_version, summary_updated_at = update_summary_from_discussion(
-        paper, req.message, answer, hint
-    )
+    if req.update_summary:
+        merged_summary, summary_version, summary_updated_at = update_summary_from_discussion(
+            paper, req.message, answer, hint
+        )
+    else:
+        merged_summary = from_json(paper["summary_json"])
+        summary_version = paper["summary_version"] or 0
+        summary_updated_at = paper["summary_updated_at"]
     with get_conn() as conn:
         cursor = conn.execute(
             "INSERT INTO messages (paper_id, role, content, source_hint, created_at) VALUES (?, ?, ?, ?, ?)",
