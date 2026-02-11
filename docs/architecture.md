@@ -9,6 +9,7 @@
 5. Backend asks model for multilingual summary and stores result.
 6. `RESULTS` tab lists papers; clicking one opens summary + chat.
 7. For each chat question, backend retrieves top relevant chunks first, then asks model to answer with citations (`[Page X]`).
+8. Backend updates multilingual summary after each chat turn and bumps summary version.
 
 ## Data Tables
 
@@ -20,6 +21,8 @@
 - `filepath`
 - `status` (`queued`, `processing`, `completed`, `failed`)
 - `summary_json`
+- `summary_version`
+- `summary_updated_at`
 - `full_text`
 - `created_at`
 - `updated_at`

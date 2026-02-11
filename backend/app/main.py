@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .db import from_json, get_conn, init_db
 from .schemas import ChatMessageIn, ChatMessageOut, ChatReply, PaperDetail, PaperListItem, UploadPaperResponse
-from .services import generate_chat_reply, now_iso, process_paper
+from .services import generate_chat_reply, now_iso, process_paper, update_summary_from_discussion
 
 ROOT = Path(__file__).resolve().parents[2]
 UPLOAD_DIR = ROOT / "data" / "uploads"
@@ -86,6 +86,8 @@ def get_paper(paper_id: int) -> PaperDetail:
         filename=row["filename"],
         status=row["status"],
         summary=from_json(row["summary_json"]),
+        summary_version=row["summary_version"] or 0,
+        summary_updated_at=datetime.fromisoformat(row["summary_updated_at"]) if row["summary_updated_at"] else None,
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
     )
@@ -132,6 +134,9 @@ def chat_with_paper(paper_id: int, req: ChatMessageIn) -> ChatReply:
         )
 
     answer, hint = generate_chat_reply(paper, req.message)
+    merged_summary, summary_version, summary_updated_at = update_summary_from_discussion(
+        paper, req.message, answer, hint
+    )
     with get_conn() as conn:
         cursor = conn.execute(
             "INSERT INTO messages (paper_id, role, content, source_hint, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -149,7 +154,10 @@ def chat_with_paper(paper_id: int, req: ChatMessageIn) -> ChatReply:
             content=row["content"],
             source_hint=row["source_hint"],
             created_at=datetime.fromisoformat(row["created_at"]),
-        )
+        ),
+        summary=merged_summary,
+        summary_version=summary_version,
+        summary_updated_at=datetime.fromisoformat(summary_updated_at) if summary_updated_at else None,
     )
 
 

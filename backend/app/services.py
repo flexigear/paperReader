@@ -124,6 +124,18 @@ def _default_summary(title: str) -> dict[str, Any]:
     }
 
 
+def _normalize_summary_shape(summary: dict[str, Any] | None, title: str) -> dict[str, Any]:
+    base = _default_summary(title)
+    incoming = summary or {}
+    for lang in ("zh", "en", "ja"):
+        src = incoming.get(lang, {})
+        for field in ("question", "solution", "findings"):
+            value = src.get(field) if isinstance(src, dict) else None
+            if isinstance(value, str) and value.strip():
+                base[lang][field] = value.strip()
+    return base
+
+
 def _parse_json_from_text(text: str) -> dict[str, Any]:
     text = text.strip()
     try:
@@ -238,10 +250,7 @@ def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
     response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
     data = _parse_json_from_text(response.output_text)
 
-    required = {"zh", "en", "ja"}
-    if not required.issubset(set(data.keys())):
-        raise ServiceError("Model summary format is invalid.")
-    return data
+    return _normalize_summary_shape(data, title)
 
 
 def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str | None]:
@@ -280,6 +289,57 @@ def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str
     return answer, source_hint
 
 
+def update_summary_from_discussion(
+    paper: sqlite3.Row, user_message: str, assistant_answer: str, source_hint: str | None
+) -> tuple[dict[str, Any], int, str]:
+    current_summary = _normalize_summary_shape(from_json(paper["summary_json"]), paper["title"])
+    now = now_iso()
+
+    if not OPENAI_API_KEY or OpenAI is None:
+        suffix_zh = f"\n[讨论补充] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
+        suffix_en = f"\n[Discussion] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
+        suffix_ja = f"\n[議論補足] Q: {user_message} A: {assistant_answer} ({source_hint or 'N/A'})"
+        merged = current_summary
+        merged["zh"]["findings"] = (merged["zh"]["findings"] + suffix_zh).strip()
+        merged["en"]["findings"] = (merged["en"]["findings"] + suffix_en).strip()
+        merged["ja"]["findings"] = (merged["ja"]["findings"] + suffix_ja).strip()
+    else:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        prompt = (
+            "You are updating an existing multilingual paper summary after a user discussion. "
+            "Return JSON only with keys zh, en, ja; each has question, solution, findings. "
+            "Integrate only reliable new insights supported by assistant answer and source hint. "
+            "Keep prior good points and refine wording if needed.\n\n"
+            f"Paper title: {paper['title']}\n"
+            f"Current summary JSON: {json.dumps(current_summary, ensure_ascii=False)}\n"
+            f"User message: {user_message}\n"
+            f"Assistant answer: {assistant_answer}\n"
+            f"Source hint: {source_hint or 'N/A'}\n"
+        )
+        response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
+        parsed = _parse_json_from_text(response.output_text)
+        merged = _normalize_summary_shape(parsed, paper["title"])
+
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE papers
+            SET summary_json = ?,
+                summary_version = COALESCE(summary_version, 0) + 1,
+                summary_updated_at = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (to_json(merged), now, now, paper["id"]),
+        )
+        row = conn.execute(
+            "SELECT summary_version, summary_updated_at FROM papers WHERE id = ?",
+            (paper["id"],),
+        ).fetchone()
+
+    return merged, row["summary_version"], row["summary_updated_at"]
+
+
 def _replace_chunks(conn: sqlite3.Connection, paper_id: int, chunks: list[dict[str, Any]]) -> None:
     conn.execute("DELETE FROM chunks WHERE paper_id = ?", (paper_id,))
     for chunk in chunks:
@@ -311,8 +371,17 @@ def process_paper(paper_id: int) -> None:
         with get_conn() as conn:
             _replace_chunks(conn, paper_id, chunks)
             conn.execute(
-                "UPDATE papers SET status = ?, full_text = ?, summary_json = ?, updated_at = ? WHERE id = ?",
-                ("completed", full_text, to_json(summary), now_iso(), paper_id),
+                """
+                UPDATE papers
+                SET status = ?,
+                    full_text = ?,
+                    summary_json = ?,
+                    summary_version = COALESCE(summary_version, 0) + 1,
+                    summary_updated_at = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                ("completed", full_text, to_json(summary), now_iso(), now_iso(), paper_id),
             )
     except Exception as exc:  # pragma: no cover
         with get_conn() as conn:

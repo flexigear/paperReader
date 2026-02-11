@@ -28,3 +28,7 @@ build/
 *.log
 coverage/
 .coverage
+
+# Runtime data
+data/paper_reader.db
+data/uploads/

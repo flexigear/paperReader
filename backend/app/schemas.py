@@ -22,6 +22,8 @@ class PaperDetail(BaseModel):
     filename: str
     status: str
     summary: dict | None
+    summary_version: int
+    summary_updated_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -40,3 +42,6 @@ class ChatMessageOut(BaseModel):
 
 class ChatReply(BaseModel):
     answer: ChatMessageOut
+    summary: dict | None
+    summary_version: int
+    summary_updated_at: datetime | None

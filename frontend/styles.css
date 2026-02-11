@@ -129,6 +129,11 @@ button:hover {
   padding: 14px;
 }
 
+#summaryMeta {
+  color: var(--muted);
+  margin: 6px 0 10px;
+}
+
 .hidden {
   display: none;
 }

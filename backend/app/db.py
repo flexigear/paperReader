@@ -7,6 +7,13 @@ from typing import Any
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "paper_reader.db"
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+    cols = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    col_names = {c[1] for c in cols}
+    if column not in col_names:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+
+
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
@@ -20,6 +27,8 @@ def init_db() -> None:
                 status TEXT NOT NULL,
                 summary_json TEXT,
                 full_text TEXT,
+                summary_version INTEGER NOT NULL DEFAULT 0,
+                summary_updated_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -38,6 +47,8 @@ def init_db() -> None:
             )
             """
         )
+        _ensure_column(conn, "papers", "summary_version", "summary_version INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "papers", "summary_updated_at", "summary_updated_at TEXT")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (

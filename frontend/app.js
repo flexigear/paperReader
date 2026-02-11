@@ -8,6 +8,7 @@ const pdfViewer = document.getElementById('pdfViewer');
 const paperTitle = document.getElementById('paperTitle');
 const detail = document.getElementById('detail');
 const detailTitle = document.getElementById('detailTitle');
+const summaryMeta = document.getElementById('summaryMeta');
 const refreshSummaryBtn = document.getElementById('refreshSummaryBtn');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
@@ -47,6 +48,15 @@ function setSummary(summary) {
     summaryFields[lang].solution.textContent = block.solution || '-';
     summaryFields[lang].findings.textContent = block.findings || '-';
   });
+}
+
+function setSummaryMeta(version, updatedAt) {
+  if (!version) {
+    summaryMeta.textContent = '总结版本：v0（尚未生成）';
+    return;
+  }
+  const timeText = updatedAt ? new Date(updatedAt).toLocaleString() : '-';
+  summaryMeta.textContent = `总结版本：v${version}，最近更新：${timeText}`;
 }
 
 function addChatLine(role, content, sourceHint = null) {
@@ -89,6 +99,7 @@ async function selectPaper(paperId) {
   detail.classList.remove('hidden');
   detailTitle.textContent = `${paper.title} (${paper.status})`;
   setSummary(paper.summary);
+  setSummaryMeta(paper.summary_version, paper.summary_updated_at);
 
   paperTitle.textContent = paper.title;
   pdfViewer.src = `/api/papers/${paperId}/pdf`;
@@ -141,6 +152,8 @@ chatForm.addEventListener('submit', async (event) => {
       body: JSON.stringify({ message }),
     });
     addChatLine('assistant', data.answer.content, data.answer.source_hint);
+    setSummary(data.summary);
+    setSummaryMeta(data.summary_version, data.summary_updated_at);
   } catch (error) {
     addChatLine('assistant', `请求失败：${error.message}`);
   }
