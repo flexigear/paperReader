@@ -15,6 +15,7 @@ const chatInput = document.getElementById('chatInput');
 const chatBox = document.getElementById('chatBox');
 
 let selectedPaperId = null;
+let statusPollTimer = null;
 
 const summaryFields = {
   zh: {
@@ -92,6 +93,42 @@ async function loadPaperList() {
   });
 }
 
+function bindPaperViewer(paperId, title) {
+  paperTitle.textContent = title;
+  pdfViewer.src = `/api/papers/${paperId}/pdf`;
+}
+
+function clearStatusPoll() {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer);
+    statusPollTimer = null;
+  }
+}
+
+async function startStatusPoll(paperId) {
+  clearStatusPoll();
+  statusPollTimer = setInterval(async () => {
+    try {
+      const paper = await fetchJson(`/api/papers/${paperId}`);
+      await loadPaperList();
+      uploadStatus.textContent = `解析状态：${paper.status}`;
+      if (paper.status === 'completed' || paper.status === 'failed') {
+        clearStatusPoll();
+        if (paper.status === 'completed') {
+          uploadStatus.textContent = `解析完成：${paper.title}`;
+          await selectPaper(paperId);
+          switchTab('results');
+        } else {
+          uploadStatus.textContent = `解析失败：${paper.title}`;
+        }
+      }
+    } catch (error) {
+      clearStatusPoll();
+      uploadStatus.textContent = `轮询失败：${error.message}`;
+    }
+  }, 2500);
+}
+
 async function selectPaper(paperId) {
   selectedPaperId = paperId;
   const paper = await fetchJson(`/api/papers/${paperId}`);
@@ -101,8 +138,7 @@ async function selectPaper(paperId) {
   setSummary(paper.summary);
   setSummaryMeta(paper.summary_version, paper.summary_updated_at);
 
-  paperTitle.textContent = paper.title;
-  pdfViewer.src = `/api/papers/${paperId}/pdf`;
+  bindPaperViewer(paperId, paper.title);
 
   chatBox.innerHTML = '';
   const messages = await fetchJson(`/api/papers/${paperId}/chat`);
@@ -123,9 +159,12 @@ uploadForm.addEventListener('submit', async (event) => {
       method: 'POST',
       body: formData,
     });
-    uploadStatus.textContent = `已上传：${result.title}，正在解析。`;
+    selectedPaperId = result.id;
+    bindPaperViewer(result.id, result.title);
+    uploadStatus.textContent = `已上传：${result.title}，正在解析（queued）。`;
     await loadPaperList();
-    switchTab('results');
+    switchTab('paper');
+    await startStatusPoll(result.id);
   } catch (error) {
     uploadStatus.textContent = `上传失败：${error.message}`;
   }
