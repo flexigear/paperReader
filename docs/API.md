@@ -18,7 +18,7 @@ Response (new):
   "status": "queued",
   "duplicate": false,
   "duplicate_of": null,
-  "message": "上传成功，已加入解析队列。"
+  "message": "Upload accepted and queued for parsing."
 }
 ```
 
@@ -31,7 +31,7 @@ Response (duplicate reused):
   "status": "completed",
   "duplicate": true,
   "duplicate_of": 7,
-  "message": "该论文已处理过，已复用历史结果。"
+  "message": "This paper was already processed; previous results reused."
 }
 ```
 
@@ -67,7 +67,7 @@ Request:
 
 ```json
 {
-  "message": "这个方法的核心创新是什么？",
+  "message": "What is the core innovation of this method?",
   "update_summary": false
 }
 ```

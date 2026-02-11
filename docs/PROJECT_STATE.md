@@ -23,8 +23,8 @@
 - `RESULTS` detail panel supports close action.
 - Paper chat with retrieved page hints.
 - Manual summary controls:
-  - `重新总结` (re-run full paper summary)
-  - `更新总结` (update summary from latest discussion pair)
+  - `Re-run summary` (re-run full paper summary)
+  - `Update summary` (update summary from latest discussion pair)
 - Debian background control scripts:
   - `scripts/paperreader-start.sh`
   - `scripts/paperreader-stop.sh`

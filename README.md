@@ -1,49 +1,49 @@
 # paper reader
 
-AI 论文阅读器（Web 版）原型项目。
+AI paper reader (Web prototype).
 
-## 已实现功能
+## Implemented Features
 
-- 上传 PDF 论文（PC/Android/iPhone 浏览器均可）。
-- 服务端接收论文并异步解析文本。
-- 调用模型生成中/英/日三语总结：
-  - 本论文要解决的问题（回答式描述）
-  - 如何解决该问题（回答式描述）
-  - 基于上述解决方案，得到了什么结果（回答式描述）
-- 三选项卡 UI：
-  - `UPLOAD`：上传论文
-  - `PAPER`：查看当前论文原文
-  - `RESULTS`：结果列表（横向滚动）+ 详情 + AI 对话
-- 原文支持分页浏览（服务端按页 PDF 输出，适配移动端）。
-- 已实现检索增强问答（RAG）：
-  - 论文按页分块并写入 `chunks` 索引
-  - 每次提问先检索相关片段，再让模型回答
-  - 回答要求给出页码引用（如 `[Page 7]`）
-- 已实现“讨论后更新总结”：
-  - 每轮对话后自动融合到三语总结
-  - 记录总结版本号与最近更新时间
-- 已实现上传去重：
-  - 上传时按论文内容指纹与规范化标题比对
-  - 命中已处理论文时复用历史结果，不重复解析
+- Upload PDF papers (PC/Android/iPhone browsers supported).
+- Server receives uploads and parses text asynchronously.
+- Multilingual summaries in EN/JA/ZH:
+  - The problem this paper solves (answer-style description)
+  - How the paper solves the problem (answer-style description)
+  - Results obtained from the solution (answer-style description)
+- Three-tab UI:
+  - `UPLOAD`: upload a paper
+  - `PAPER`: view the original PDF
+  - `RESULTS`: results list + details + AI chat
+- PDF paging in the `PAPER` tab (server-side single-page PDF output for mobile compatibility).
+- Retrieval-augmented Q&A (RAG):
+  - Chunk by page and store in the `chunks` index
+  - Retrieve relevant chunks before answering
+  - Answers include page citations (e.g. `[Page 7]`)
+- Discussion-based summary updates:
+  - Each discussion round can be merged into the multilingual summary
+  - Summary versioning and last-updated time are recorded
+- Upload deduplication:
+  - Compare content fingerprint + normalized title
+  - Reuse existing results for duplicates (no re-parse)
 
-## 技术栈
+## Tech Stack
 
 - Backend: FastAPI + SQLite
-- PDF 解析: pypdf
+- PDF parsing: pypdf
 - LLM: OpenAI Responses API
-- Frontend: 原生 HTML/CSS/JS（移动端自适应）
+- Frontend: vanilla HTML/CSS/JS (mobile responsive)
 
-## 模型建议
+## Model Defaults
 
-- 深度总结模型：`gpt-5.2-pro`
-- 对话模型：`gpt-5.2-pro`
+- Summary model: `gpt-5.2-pro`
+- Chat model: `gpt-5.2-pro`
 
-可通过环境变量覆盖：
+Override via environment variables:
 
 - `OPENAI_SUMMARY_MODEL`
 - `OPENAI_CHAT_MODEL`
 
-## 快速启动
+## Quick Start
 
 ```bash
 cd /mnt/projects/paperReader
@@ -54,62 +54,62 @@ export OPENAI_API_KEY="<your_api_key>"
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-打开 `http://localhost:8000`。
+Open `http://localhost:8000`.
 
 ## CI
 
-Push/PR 会自动运行 `pytest`，并在 Actions Summary 中展示测试报告。
+Push/PR runs `pytest` automatically and publishes a test report in the Actions Summary.
 
-## 维护提示（便于续接）
+## Maintenance Notes (Session Handoff)
 
-- 重要入口文档：
-  - `docs/PROJECT_STATE.md`：当前状态/风险/下一步
-  - `docs/architecture.md`：系统架构与数据模型
-  - `docs/API.md`：接口清单
-  - `docs/WORKLOG.md`：工作记录与上下文
-- 关键实现：
-  - `backend/app/main.py`：API 入口与路由
-  - `backend/app/services.py`：PDF 解析、检索、摘要、问答逻辑
-  - `frontend/index.html` / `frontend/app.js` / `frontend/styles.css`：前端 UI
-  - `tests/test_pdf_paging.py`：PDF 分页相关测试
+- Key docs:
+  - `docs/PROJECT_STATE.md`: status/risks/next actions
+  - `docs/architecture.md`: architecture and data model
+  - `docs/API.md`: API reference
+  - `docs/WORKLOG.md`: work history and context
+- Core implementation:
+  - `backend/app/main.py`: API entrypoints and routing
+  - `backend/app/services.py`: PDF parsing, retrieval, summaries, chat
+  - `frontend/index.html` / `frontend/app.js` / `frontend/styles.css`: UI
+  - `tests/test_pdf_paging.py`: PDF paging tests
 
-## Debian 后台脚本
+## Debian Background Scripts
 
 ```bash
 cd /mnt/projects/paperReader
-scripts/paperreader-start.sh     # 后台启动
-scripts/paperreader-status.sh    # 查看状态
-scripts/paperreader-restart.sh   # 重启服务
-scripts/paperreader-stop.sh      # 停止服务
+scripts/paperreader-start.sh     # start in background
+scripts/paperreader-status.sh    # check status
+scripts/paperreader-restart.sh   # restart service
+scripts/paperreader-stop.sh      # stop service
 ```
 
-说明：
-- 日志文件：`.run/paper-reader.log`
-- 进程文件：`.run/paper-reader.pid`
-- 可通过环境变量覆盖监听地址：`HOST`、`PORT`
-- `paperreader-start.sh` 会自动加载 `.env`
-- 启动前会强制校验 `OPENAI_API_KEY`，缺失则拒绝启动
+Notes:
+- Log file: `.run/paper-reader.log`
+- PID file: `.run/paper-reader.pid`
+- Bind address can be overridden via `HOST` and `PORT`
+- `paperreader-start.sh` loads `.env` automatically
+- Startup enforces `OPENAI_API_KEY` and aborts if missing
 
-## 目录结构
+## Directory Layout
 
-- `backend/app/main.py`: API 入口与静态页面托管
-- `backend/app/services.py`: PDF 提取、分块检索、摘要生成、问答逻辑
-- `backend/app/db.py`: SQLite 初始化与访问
-- `frontend/index.html`: 三选项卡 UI
-- `frontend/app.js`: 前端交互逻辑
-- `frontend/styles.css`: 样式
-- `data/uploads/`: 论文文件存储目录
+- `backend/app/main.py`: API entrypoint + static UI hosting
+- `backend/app/services.py`: PDF extraction, chunking, summary generation, chat
+- `backend/app/db.py`: SQLite initialization and access
+- `frontend/index.html`: three-tab UI
+- `frontend/app.js`: frontend interaction logic
+- `frontend/styles.css`: styling
+- `data/uploads/`: uploaded PDF storage
 
-## 文档入口
+## Docs Entry
 
-- `docs/PROJECT_STATE.md`: 当前状态、已完成、风险与下一步
-- `docs/architecture.md`: 系统架构、流程、数据模型与约束
-- `docs/API.md`: 接口说明与示例
-- `docs/CHANGELOG.md`: 变更历史
-- `docs/WORKLOG.md`: 工作记录（便于会话续接）
+- `docs/PROJECT_STATE.md`: current state, completed items, risks, and next steps
+- `docs/architecture.md`: system architecture, flow, data model, constraints
+- `docs/API.md`: API reference and examples
+- `docs/CHANGELOG.md`: change history
+- `docs/WORKLOG.md`: worklog (for session continuity)
 
-## 当前限制
+## Current Limitations
 
-- 暂未做用户鉴权，默认单用户本地使用。
-- 当前检索为词法打分（后续可升级为向量检索）。
-- 自动融合依赖模型输出质量，复杂争议点仍建议手动复核。
+- No authentication/authorization (single-user local deployment assumption).
+- Retrieval is lexical scoring only (can be upgraded to embeddings).
+- Summary merging depends on model quality; complex disputes still need manual review.
