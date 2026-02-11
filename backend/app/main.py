@@ -70,12 +70,8 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
                 """
                 SELECT id, title, status FROM papers
                 WHERE content_fingerprint = ?
-                ORDER BY CASE status
-                    WHEN 'completed' THEN 0
-                    WHEN 'processing' THEN 1
-                    WHEN 'queued' THEN 2
-                    ELSE 3
-                END, id DESC
+                  AND status = 'completed'
+                ORDER BY id DESC
                 LIMIT 1
                 """,
                 (content_fingerprint,),
@@ -85,13 +81,8 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
                 """
                 SELECT id, title, status FROM papers
                 WHERE canonical_title = ?
-                  AND status IN ('queued', 'processing', 'completed')
-                ORDER BY CASE status
-                    WHEN 'completed' THEN 0
-                    WHEN 'processing' THEN 1
-                    WHEN 'queued' THEN 2
-                    ELSE 3
-                END, id DESC
+                  AND status = 'completed'
+                ORDER BY id DESC
                 LIMIT 1
                 """,
                 (canonical_title,),

@@ -170,8 +170,7 @@ async function uploadSelectedFile(file) {
     } else if (result.status === 'queued' || result.status === 'processing') {
       await startStatusPoll(result.id);
     } else {
-      switchTab('results');
-      await selectPaper(result.id);
+      uploadStatus.textContent = `上传已接收：${result.title}，状态为 ${result.status}。请稍后查看。`;
     }
   } catch (error) {
     uploadStatus.textContent = `上传失败：${error.message}`;
