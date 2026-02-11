@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -34,6 +35,24 @@ app.add_middleware(
 )
 
 
+def _is_placeholder_summary(summary_json: str | None) -> bool:
+    if not summary_json:
+        return True
+    try:
+        payload = json.loads(summary_json)
+        text = json.dumps(payload, ensure_ascii=False).lower()
+    except Exception:
+        text = str(summary_json).lower()
+
+    markers = [
+        "当前未配置可用模型",
+        "no model is configured",
+        "openai_api_key",
+        "利用可能なモデルが未設定",
+    ]
+    return any(marker in text for marker in markers)
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -68,7 +87,7 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
         if content_fingerprint:
             existing = conn.execute(
                 """
-                SELECT id, title, status FROM papers
+                SELECT id, title, status, summary_json FROM papers
                 WHERE content_fingerprint = ?
                   AND status = 'completed'
                 ORDER BY id DESC
@@ -76,10 +95,12 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
                 """,
                 (content_fingerprint,),
             ).fetchone()
+            if existing and _is_placeholder_summary(existing["summary_json"]):
+                existing = None
         if not existing and canonical_title:
             existing = conn.execute(
                 """
-                SELECT id, title, status FROM papers
+                SELECT id, title, status, summary_json FROM papers
                 WHERE canonical_title = ?
                   AND status = 'completed'
                 ORDER BY id DESC
@@ -87,6 +108,8 @@ async def upload_paper(background_tasks: BackgroundTasks, file: UploadFile = Fil
                 """,
                 (canonical_title,),
             ).fetchone()
+            if existing and _is_placeholder_summary(existing["summary_json"]):
+                existing = None
 
         if existing:
             if save_path.exists():
