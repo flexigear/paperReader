@@ -99,7 +99,12 @@ def get_paper_pdf(paper_id: int) -> FileResponse:
         row = conn.execute("SELECT filepath, filename FROM papers WHERE id = ?", (paper_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Paper not found")
-    return FileResponse(path=row["filepath"], media_type="application/pdf", filename=row["filename"])
+    safe_filename = row["filename"].replace('"', "")
+    return FileResponse(
+        path=row["filepath"],
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{safe_filename}"'},
+    )
 
 
 @app.get("/api/papers/{paper_id}/chat", response_model=list[ChatMessageOut])

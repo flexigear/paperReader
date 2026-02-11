@@ -162,7 +162,6 @@ async function uploadSelectedFile(file) {
     bindPaperViewer(result.id, result.title);
     uploadStatus.textContent = `已上传：${result.title}，正在解析（queued）。`;
     await loadPaperList();
-    switchTab('paper');
     await startStatusPoll(result.id);
   } catch (error) {
     uploadStatus.textContent = `上传失败：${error.message}`;
