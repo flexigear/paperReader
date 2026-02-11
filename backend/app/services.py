@@ -216,6 +216,17 @@ def _normalize_summary_shape(summary: dict[str, Any] | None, title: str) -> dict
     return base
 
 
+def _assert_summary_complete(summary: dict[str, Any]) -> None:
+    for lang in ("zh", "en", "ja"):
+        block = summary.get(lang, {})
+        if not isinstance(block, dict):
+            raise ServiceError(f"Summary format invalid for language: {lang}")
+        for field in ("question", "solution", "findings"):
+            value = block.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ServiceError(f"Summary field missing or empty: {lang}.{field}")
+
+
 def _parse_json_from_text(text: str) -> dict[str, Any]:
     text = text.strip()
     try:
@@ -341,8 +352,9 @@ def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
 
     response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
     data = _parse_json_from_text(response.output_text)
-
-    return _normalize_summary_shape(data, title)
+    normalized = _normalize_summary_shape(data, title)
+    _assert_summary_complete(normalized)
+    return normalized
 
 
 def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str | None]:
@@ -410,6 +422,7 @@ def update_summary_from_discussion(
     response = client.responses.create(model=MODEL_SUMMARY, input=prompt)
     parsed = _parse_json_from_text(response.output_text)
     merged = _normalize_summary_shape(parsed, paper["title"])
+    _assert_summary_complete(merged)
 
     with get_conn() as conn:
         conn.execute(
