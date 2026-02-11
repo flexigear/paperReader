@@ -71,11 +71,11 @@ function setSummary(summary) {
 
 function setSummaryMeta(version, updatedAt) {
   if (!version) {
-    summaryMeta.textContent = '总结版本：v0（尚未生成）';
+    summaryMeta.textContent = 'Summary version: v0 (not generated yet)';
     return;
   }
   const timeText = updatedAt ? new Date(updatedAt).toLocaleString() : '-';
-  summaryMeta.textContent = `总结版本：v${version}，最近更新：${timeText}`;
+  summaryMeta.textContent = `Summary version: v${version}, last updated: ${timeText}`;
 }
 
 function buildPdfPageUrl(paperId, page) {
@@ -173,9 +173,9 @@ async function loadPaperList() {
     const delBtn = document.createElement('button');
     delBtn.className = 'paper-delete-btn';
     delBtn.type = 'button';
-    delBtn.textContent = '删除';
+    delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', async () => {
-      const ok = window.confirm(`确认删除论文：${paper.title}？`);
+      const ok = window.confirm(`Delete paper: ${paper.title}?`);
       if (!ok) return;
       try {
         await fetchJson(`/api/papers/${paper.id}`, { method: 'DELETE' });
@@ -184,11 +184,11 @@ async function loadPaperList() {
           detail.classList.add('hidden');
           chatBox.innerHTML = '';
           pdfViewer.src = 'about:blank';
-          paperTitle.textContent = '论文原文';
+          paperTitle.textContent = 'Paper PDF';
         }
         await loadPaperList();
       } catch (error) {
-        uploadStatus.textContent = `删除失败：${error.message}`;
+        uploadStatus.textContent = `Delete failed: ${error.message}`;
       }
     });
 
@@ -220,20 +220,20 @@ async function startStatusPoll(paperId) {
     try {
       const paper = await fetchJson(`/api/papers/${paperId}`);
       await loadPaperList();
-      uploadStatus.textContent = `解析状态：${paper.status}`;
+      uploadStatus.textContent = `Processing status: ${paper.status}`;
       if (paper.status === 'completed' || paper.status === 'failed') {
         clearStatusPoll();
         if (paper.status === 'completed') {
-          uploadStatus.textContent = `解析完成：${paper.title}`;
+          uploadStatus.textContent = `Completed: ${paper.title}`;
           await selectPaper(paperId);
           switchTab('results');
         } else {
-          uploadStatus.textContent = `解析失败：${paper.title}`;
+          uploadStatus.textContent = `Failed: ${paper.title}`;
         }
       }
     } catch (error) {
       clearStatusPoll();
-      uploadStatus.textContent = `轮询失败：${error.message}`;
+      uploadStatus.textContent = `Polling failed: ${error.message}`;
     }
   }, 2500);
 }
@@ -258,7 +258,7 @@ async function uploadSelectedFile(file) {
   if (!file) return;
 
   clearStatusPoll();
-  uploadStatus.textContent = '上传中...';
+  uploadStatus.textContent = 'Uploading...';
   setPdfTotalPages(null);
   const formData = new FormData();
   formData.append('file', file);
@@ -271,8 +271,8 @@ async function uploadSelectedFile(file) {
     selectedPaperId = result.id;
     bindPaperViewer(result.id, result.title);
     uploadStatus.textContent = result.duplicate
-      ? `已过滤重复论文：${result.title}（复用已有结果）`
-      : `已上传：${result.title}，正在解析（queued）。`;
+      ? `Duplicate detected: ${result.title} (reused existing results)`
+      : `Uploaded: ${result.title}, queued for processing.`;
     await loadPaperList();
     if (result.status === 'completed') {
       await selectPaper(result.id);
@@ -280,10 +280,10 @@ async function uploadSelectedFile(file) {
     } else if (result.status === 'queued' || result.status === 'processing') {
       await startStatusPoll(result.id);
     } else {
-      uploadStatus.textContent = `上传已接收：${result.title}，状态为 ${result.status}。请稍后查看。`;
+      uploadStatus.textContent = `Upload received: ${result.title}, status ${result.status}. Check later.`;
     }
   } catch (error) {
-    uploadStatus.textContent = `上传失败：${error.message}`;
+    uploadStatus.textContent = `Upload failed: ${error.message}`;
   } finally {
     pdfInput.value = '';
   }
@@ -356,7 +356,7 @@ chatForm.addEventListener('submit', async (event) => {
     });
     addChatLine('assistant', data.answer.content, data.answer.source_hint);
   } catch (error) {
-    addChatLine('assistant', `请求失败：${error.message}`);
+    addChatLine('assistant', `Request failed: ${error.message}`);
   }
 });
 
@@ -369,10 +369,10 @@ updateSummaryBtn.addEventListener('click', async () => {
     setSummary(paper.summary);
     setSummaryMeta(paper.summary_version, paper.summary_updated_at);
   } catch (error) {
-    addChatLine('assistant', `更新总结失败：${error.message}`);
+    addChatLine('assistant', `Update summary failed: ${error.message}`);
   }
 });
 
 loadPaperList().catch((err) => {
-  uploadStatus.textContent = `初始化失败：${err.message}`;
+  uploadStatus.textContent = `Initialization failed: ${err.message}`;
 });

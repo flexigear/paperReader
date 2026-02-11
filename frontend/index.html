@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
   <body>
     <header class="topbar">
       <h1>Paper Reader</h1>
-      <p>AI论文阅读器</p>
+      <p>AI paper reader</p>
     </header>
 
     <nav class="tabs">
@@ -20,38 +20,38 @@
 
     <main>
       <section id="upload" class="panel active">
-        <h2>上传论文 PDF</h2>
+        <h2>Upload PDF Paper</h2>
         <div id="uploadForm">
           <input id="pdfFile" type="file" accept="application/pdf" hidden />
-          <button id="uploadBtn" type="button">上传 paper</button>
+          <button id="uploadBtn" type="button">Upload Paper</button>
         </div>
         <p id="uploadStatus"></p>
       </section>
 
       <section id="paper" class="panel">
-        <h2 id="paperTitle">论文原文</h2>
+        <h2 id="paperTitle">Paper PDF</h2>
         <div class="paper-toolbar">
-          <button id="paperPrevBtn" type="button">上一页</button>
-          <label class="paper-page-label" for="paperPageInput">页码</label>
+          <button id="paperPrevBtn" type="button">Previous</button>
+          <label class="paper-page-label" for="paperPageInput">Page</label>
           <input id="paperPageInput" type="number" min="1" value="1" />
           <span class="paper-page-total" id="paperPageTotal">/ -</span>
-          <button id="paperNextBtn" type="button">下一页</button>
-          <button id="paperOpenNewBtn" type="button">新窗口打开</button>
+          <button id="paperNextBtn" type="button">Next</button>
+          <button id="paperOpenNewBtn" type="button">Open in new window</button>
         </div>
         <iframe id="pdfViewer" title="PDF Viewer"></iframe>
       </section>
 
       <section id="results" class="panel">
-        <h2>解析结果</h2>
+        <h2>Results</h2>
         <div id="paperList" class="paper-list"></div>
 
         <article id="detail" class="detail hidden">
           <div class="detail-head">
             <h3 id="detailTitle"></h3>
-            <button id="detailCloseBtn" type="button">关闭</button>
+            <button id="detailCloseBtn" type="button">Close</button>
           </div>
           <p id="summaryMeta"></p>
-          <button id="refreshSummaryBtn" type="button">重新总结</button>
+          <button id="refreshSummaryBtn" type="button">Re-run Summary</button>
 
           <div class="summary-grid">
             <section>
@@ -61,26 +61,26 @@
               <div class="summary-item"><strong>(3) Result:</strong><div class="summary-content" id="enFindings"></div></div>
             </section>
             <section>
-              <h4>日本語</h4>
-              <div class="summary-item"><strong>（1）課題：</strong><div class="summary-content" id="jaQuestion"></div></div>
-              <div class="summary-item"><strong>（2）解決策：</strong><div class="summary-content" id="jaSolution"></div></div>
-              <div class="summary-item"><strong>（3）結果：</strong><div class="summary-content" id="jaFindings"></div></div>
+              <h4>Japanese</h4>
+              <div class="summary-item"><strong>(1) Problem:</strong><div class="summary-content" id="jaQuestion"></div></div>
+              <div class="summary-item"><strong>(2) Solution:</strong><div class="summary-content" id="jaSolution"></div></div>
+              <div class="summary-item"><strong>(3) Result:</strong><div class="summary-content" id="jaFindings"></div></div>
             </section>
             <section>
-              <h4>中文</h4>
-              <div class="summary-item"><strong>（1）问题：</strong><div class="summary-content" id="zhQuestion"></div></div>
-              <div class="summary-item"><strong>（2）解决方案：</strong><div class="summary-content" id="zhSolution"></div></div>
-              <div class="summary-item"><strong>（3）结果：</strong><div class="summary-content" id="zhFindings"></div></div>
+              <h4>Chinese</h4>
+              <div class="summary-item"><strong>(1) Problem:</strong><div class="summary-content" id="zhQuestion"></div></div>
+              <div class="summary-item"><strong>(2) Solution:</strong><div class="summary-content" id="zhSolution"></div></div>
+              <div class="summary-item"><strong>(3) Result:</strong><div class="summary-content" id="zhFindings"></div></div>
             </section>
           </div>
 
           <section class="chat">
-            <h4>和 AI 讨论论文</h4>
+            <h4>Discuss the Paper with AI</h4>
             <div id="chatBox" class="chat-box"></div>
             <form id="chatForm">
-              <input id="chatInput" type="text" placeholder="输入你的问题，例如：这个实验设置有什么局限？" required />
-              <button id="updateSummaryBtn" type="button">更新总结</button>
-              <button type="submit">发送</button>
+              <input id="chatInput" type="text" placeholder="Ask a question, e.g. What are the limits of the experiment setup?" required />
+              <button id="updateSummaryBtn" type="button">Update Summary</button>
+              <button type="submit">Send</button>
             </form>
           </section>
         </article>
