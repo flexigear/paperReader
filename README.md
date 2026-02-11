@@ -60,6 +60,19 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Push/PR 会自动运行 `pytest`，并在 Actions Summary 中展示测试报告。
 
+## 维护提示（便于续接）
+
+- 重要入口文档：
+  - `docs/PROJECT_STATE.md`：当前状态/风险/下一步
+  - `docs/architecture.md`：系统架构与数据模型
+  - `docs/API.md`：接口清单
+  - `docs/WORKLOG.md`：工作记录与上下文
+- 关键实现：
+  - `backend/app/main.py`：API 入口与路由
+  - `backend/app/services.py`：PDF 解析、检索、摘要、问答逻辑
+  - `frontend/index.html` / `frontend/app.js` / `frontend/styles.css`：前端 UI
+  - `tests/test_pdf_paging.py`：PDF 分页相关测试
+
 ## Debian 后台脚本
 
 ```bash

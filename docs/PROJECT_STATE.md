@@ -6,6 +6,7 @@
 - Date: `2026-02-11`
 - Baseline commit: `0268653` (current branch base)
 - Runtime: Debian + Python venv + FastAPI + SQLite
+- CI: GitHub Actions runs `pytest`, uploads JUnit artifacts, and publishes report summary.
 
 ## Completed
 
