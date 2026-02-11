@@ -58,8 +58,16 @@ Send a chat message and receive assistant reply.
 Request:
 
 ```json
-{ "message": "这个方法的核心创新是什么？" }
+{
+  "message": "这个方法的核心创新是什么？",
+  "update_summary": false
+}
 ```
+
+Notes:
+
+- `update_summary` is optional and defaults to `false`.
+- Recommended flow is manual summary update via dedicated endpoint/button.
 
 Response:
 
@@ -80,7 +88,11 @@ Response:
 
 ## POST /api/papers/{paper_id}/refresh-summary
 
-Requeue summary regeneration for a paper.
+Requeue full summary regeneration for a paper.
+
+## POST /api/papers/{paper_id}/update-summary-from-discussion
+
+Update summary based on latest complete user+assistant discussion pair.
 
 ## DELETE /api/papers/{paper_id}
 
@@ -95,4 +107,5 @@ Response:
 ## Common Errors
 
 - `400`: invalid upload format (non-PDF)
+- `400`: no complete discussion pair found for summary update
 - `404`: paper not found

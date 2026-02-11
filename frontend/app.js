@@ -47,14 +47,9 @@ function formatSummaryText(raw) {
   const input = typeof raw === 'string' ? raw : '';
   if (!input.trim()) return '-';
 
-  let text = input.replace(/\r\n/g, '\n').trim();
-  text = text.replace(/^\s*#{1,6}\s*/gm, '');
-  text = text.replace(/\*\*/g, '');
-  text = text.replace(/\n{3,}/g, '\n\n');
-  text = text.replace(/\s+##\s+/g, '\n\n');
-  text = text.replace(/([。.!?])\s+-\s+/g, '$1\n- ');
-  text = text.replace(/\s+\(\d+\)\s+/g, '\n$&');
-  return text.trim();
+  // Keep model semantics intact; only normalize line endings and excessive empty lines.
+  const text = input.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return text || '-';
 }
 
 function setSummary(summary) {
