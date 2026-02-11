@@ -80,6 +80,14 @@ scripts/paperreader-stop.sh      # 停止服务
 - `frontend/styles.css`: 样式
 - `data/uploads/`: 论文文件存储目录
 
+## 文档入口
+
+- `docs/PROJECT_STATE.md`: 当前状态、已完成、风险与下一步
+- `docs/architecture.md`: 系统架构、流程、数据模型与约束
+- `docs/API.md`: 接口说明与示例
+- `docs/CHANGELOG.md`: 变更历史
+- `docs/WORKLOG.md`: 工作记录（便于会话续接）
+
 ## 当前限制
 
 - 暂未做用户鉴权，默认单用户本地使用。

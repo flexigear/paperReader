@@ -1,0 +1,98 @@
+# API Reference
+
+Base URL: `http://<host>:8000`
+
+## POST /api/papers/upload
+
+Upload a paper PDF.
+
+- Content-Type: `multipart/form-data`
+- Field: `file` (PDF)
+
+Response (new):
+
+```json
+{
+  "id": 12,
+  "title": "Paper Title",
+  "status": "queued",
+  "duplicate": false,
+  "duplicate_of": null,
+  "message": "上传成功，已加入解析队列。"
+}
+```
+
+Response (duplicate reused):
+
+```json
+{
+  "id": 7,
+  "title": "Existing Paper",
+  "status": "completed",
+  "duplicate": true,
+  "duplicate_of": 7,
+  "message": "该论文已处理过，已复用历史结果。"
+}
+```
+
+## GET /api/papers
+
+List papers.
+
+## GET /api/papers/{paper_id}
+
+Get paper detail, including summary and summary version metadata.
+
+## GET /api/papers/{paper_id}/pdf
+
+Return PDF content for inline rendering.
+
+## GET /api/papers/{paper_id}/chat
+
+Get chat history for paper.
+
+## POST /api/papers/{paper_id}/chat
+
+Send a chat message and receive assistant reply.
+
+Request:
+
+```json
+{ "message": "这个方法的核心创新是什么？" }
+```
+
+Response:
+
+```json
+{
+  "answer": {
+    "id": 100,
+    "role": "assistant",
+    "content": "...",
+    "source_hint": "Retrieved context: Page 3, Page 5",
+    "created_at": "2026-02-11T10:00:00+00:00"
+  },
+  "summary": { "zh": {}, "en": {}, "ja": {} },
+  "summary_version": 4,
+  "summary_updated_at": "2026-02-11T10:00:00+00:00"
+}
+```
+
+## POST /api/papers/{paper_id}/refresh-summary
+
+Requeue summary regeneration for a paper.
+
+## DELETE /api/papers/{paper_id}
+
+Delete paper, related chunks/messages, and local PDF file.
+
+Response:
+
+```json
+{ "deleted_id": 12, "message": "Paper deleted" }
+```
+
+## Common Errors
+
+- `400`: invalid upload format (non-PDF)
+- `404`: paper not found
