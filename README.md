@@ -1,23 +1,63 @@
-# paperReader
+# paper reader
 
-A new project scaffold for paperReader.
+AI 论文阅读器（Web 版）原型项目。
 
-## Project Structure
+## 已实现功能
 
-- `src/`: main source code
-- `tests/`: test cases
-- `docs/`: project documentation
-- `scripts/`: utility scripts for development and automation
+- 上传 PDF 论文（PC/Android/iPhone 浏览器均可）。
+- 服务端接收论文并异步解析文本。
+- 调用模型生成中/英/日三语总结：
+  - 问题是什么（What is the question?）
+  - 解决方法（What is the solution?）
+  - 发现了什么（What are the findings?）
+- 三选项卡 UI：
+  - `UPLOAD`：上传论文
+  - `PAPER`：查看当前论文原文
+  - `RESULTS`：结果列表（横向滚动）+ 详情 + AI 对话
+- 对话支持引用页码提示（如 `[Page X]`），并支持手动触发重新总结。
 
-## Quick Start
+## 技术栈
 
-1. Clone the repository.
-2. Add project code under `src/`.
-3. Add tests under `tests/`.
-4. Document decisions and usage in `docs/`.
+- Backend: FastAPI + SQLite
+- PDF 解析: pypdf
+- LLM: OpenAI Responses API
+- Frontend: 原生 HTML/CSS/JS（移动端自适应）
 
-## Next Suggested Steps
+## 模型建议
 
-- Choose the primary language/runtime.
-- Add dependency management config.
-- Add CI checks (lint/test).
+- 深度总结模型：`gpt-4.1`
+- 对话模型：`gpt-4.1-mini`
+
+可通过环境变量覆盖：
+
+- `OPENAI_SUMMARY_MODEL`
+- `OPENAI_CHAT_MODEL`
+
+## 快速启动
+
+```bash
+cd /mnt/projects/paperReader
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export OPENAI_API_KEY="<your_api_key>"
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+打开 `http://localhost:8000`。
+
+## 目录结构
+
+- `backend/app/main.py`: API 入口与静态页面托管
+- `backend/app/services.py`: PDF 提取、摘要生成、问答逻辑
+- `backend/app/db.py`: SQLite 初始化与访问
+- `frontend/index.html`: 三选项卡 UI
+- `frontend/app.js`: 前端交互逻辑
+- `frontend/styles.css`: 样式
+- `data/uploads/`: 论文文件存储目录
+
+## 当前限制
+
+- 暂未做用户鉴权，默认单用户本地使用。
+- 对超长论文目前使用截断策略，可后续升级为分段检索。
+- “根据讨论自动细化总结”当前通过“重新总结”按钮手动触发，下一步可改为自动融合聊天记录。

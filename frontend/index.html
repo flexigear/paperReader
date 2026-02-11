@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>paper reader</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>paper reader</h1>
+      <p>AI论文阅读器</p>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="upload">UPLOAD</button>
+      <button class="tab" data-tab="paper">PAPER</button>
+      <button class="tab" data-tab="results">RESULTS</button>
+    </nav>
+
+    <main>
+      <section id="upload" class="panel active">
+        <h2>上传论文 PDF</h2>
+        <form id="uploadForm">
+          <input id="pdfFile" type="file" accept="application/pdf" required />
+          <button type="submit">上传并解析</button>
+        </form>
+        <p id="uploadStatus"></p>
+      </section>
+
+      <section id="paper" class="panel">
+        <h2 id="paperTitle">论文原文</h2>
+        <iframe id="pdfViewer" title="PDF Viewer"></iframe>
+      </section>
+
+      <section id="results" class="panel">
+        <h2>解析结果</h2>
+        <div id="paperList" class="paper-list"></div>
+
+        <article id="detail" class="detail hidden">
+          <h3 id="detailTitle"></h3>
+          <button id="refreshSummaryBtn" type="button">重新总结</button>
+
+          <div class="summary-grid">
+            <section>
+              <h4>中文</h4>
+              <p><strong>问题：</strong><span id="zhQuestion"></span></p>
+              <p><strong>方法：</strong><span id="zhSolution"></span></p>
+              <p><strong>发现：</strong><span id="zhFindings"></span></p>
+            </section>
+            <section>
+              <h4>English</h4>
+              <p><strong>Question:</strong><span id="enQuestion"></span></p>
+              <p><strong>Solution:</strong><span id="enSolution"></span></p>
+              <p><strong>Findings:</strong><span id="enFindings"></span></p>
+            </section>
+            <section>
+              <h4>日本語</h4>
+              <p><strong>課題：</strong><span id="jaQuestion"></span></p>
+              <p><strong>解法：</strong><span id="jaSolution"></span></p>
+              <p><strong>発見：</strong><span id="jaFindings"></span></p>
+            </section>
+          </div>
+
+          <section class="chat">
+            <h4>和 AI 讨论论文</h4>
+            <div id="chatBox" class="chat-box"></div>
+            <form id="chatForm">
+              <input id="chatInput" type="text" placeholder="输入你的问题，例如：这个实验设置有什么局限？" required />
+              <button type="submit">发送</button>
+            </form>
+          </section>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
