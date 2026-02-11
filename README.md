@@ -59,16 +59,16 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ```bash
 cd /mnt/projects/paperReader
-scripts/start.sh     # 后台启动
-scripts/status.sh    # 查看状态
-scripts/stop.sh      # 停止服务
+scripts/paperreader-start.sh     # 后台启动
+scripts/paperreader-status.sh    # 查看状态
+scripts/paperreader-stop.sh      # 停止服务
 ```
 
 说明：
 - 日志文件：`.run/paper-reader.log`
 - 进程文件：`.run/paper-reader.pid`
 - 可通过环境变量覆盖监听地址：`HOST`、`PORT`
-- 若存在 `.env`，`start.sh` 会自动加载（可在其中放 `OPENAI_API_KEY`）
+- 若存在 `.env`，`paperreader-start.sh` 会自动加载（可在其中放 `OPENAI_API_KEY`）
 
 ## 目录结构
 
