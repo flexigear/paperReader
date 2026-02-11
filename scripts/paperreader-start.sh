@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_DIR="$ROOT_DIR/.run"
 PID_FILE="$RUN_DIR/paper-reader.pid"
 LOG_FILE="$RUN_DIR/paper-reader.log"
+ENV_FILE="$ROOT_DIR/.env"
 VENV_PY="$ROOT_DIR/.venv/bin/python"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
@@ -27,11 +28,20 @@ if [[ ! -x "$VENV_PY" ]]; then
   exit 1
 fi
 
-if [[ -f "$ROOT_DIR/.env" ]]; then
+if [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source "$ROOT_DIR/.env"
+  source "$ENV_FILE"
   set +a
+fi
+
+if [[ -z "${OPENAI_API_KEY:-}" || "${OPENAI_API_KEY}" == "..." ]]; then
+  echo "Missing OPENAI_API_KEY. Refusing to start."
+  echo "Create $ENV_FILE with:"
+  echo "  OPENAI_API_KEY=<your_real_key>"
+  echo "  OPENAI_SUMMARY_MODEL=gpt-5.2-pro"
+  echo "  OPENAI_CHAT_MODEL=gpt-5.2-pro"
+  exit 1
 fi
 
 cd "$ROOT_DIR"

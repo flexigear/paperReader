@@ -69,7 +69,8 @@ scripts/paperreader-stop.sh      # 停止服务
 - 日志文件：`.run/paper-reader.log`
 - 进程文件：`.run/paper-reader.pid`
 - 可通过环境变量覆盖监听地址：`HOST`、`PORT`
-- 若存在 `.env`，`paperreader-start.sh` 会自动加载（可在其中放 `OPENAI_API_KEY`）
+- `paperreader-start.sh` 会自动加载 `.env`
+- 启动前会强制校验 `OPENAI_API_KEY`，缺失则拒绝启动
 
 ## 目录结构
 
