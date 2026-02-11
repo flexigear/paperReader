@@ -323,6 +323,8 @@ def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
     client = OpenAI(api_key=OPENAI_API_KEY)
     prompt = (
         "You are an expert research paper reader. Return JSON only with keys zh, en, ja. "
+        "Use English source content as the primary basis for understanding and reasoning first, "
+        "then produce multilingual outputs. "
         "Each language object must include: question, solution, findings. "
         "'question' must directly answer: 'What problem does this paper aim to solve?'. "
         "This is a problem statement answer, NOT an interrogative sentence. "
@@ -365,6 +367,7 @@ def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str
     client = OpenAI(api_key=OPENAI_API_KEY)
     prompt = (
         "You are a research assistant for scientific papers. "
+        "Use English source content as the primary basis for understanding and reasoning first. "
         "Answer in Chinese by default unless user asks other language. "
         "Use only the retrieved chunks as evidence. "
         "When answering, cite evidence with [Page X] or [Page X-Y]. "
@@ -399,6 +402,8 @@ def update_summary_from_discussion(
         client = OpenAI(api_key=OPENAI_API_KEY)
         prompt = (
             "You are updating an existing multilingual paper summary after a user discussion. "
+            "Use English source content as the primary basis for understanding and reasoning first, "
+            "then update multilingual outputs. "
             "Return JSON only with keys zh, en, ja; each has question, solution, findings. "
             "'question' must remain the direct answer to 'What problem does this paper aim to solve?' "
             "(Chinese meaning: '本论文要解决的问题是什么'). "
