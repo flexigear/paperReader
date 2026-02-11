@@ -38,6 +38,19 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chunks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                paper_id INTEGER NOT NULL,
+                page_start INTEGER NOT NULL,
+                page_end INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (paper_id) REFERENCES papers (id)
+            )
+            """
+        )
         conn.commit()
 
 

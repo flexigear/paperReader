@@ -14,7 +14,10 @@ AI 论文阅读器（Web 版）原型项目。
   - `UPLOAD`：上传论文
   - `PAPER`：查看当前论文原文
   - `RESULTS`：结果列表（横向滚动）+ 详情 + AI 对话
-- 对话支持引用页码提示（如 `[Page X]`），并支持手动触发重新总结。
+- 已实现检索增强问答（RAG）：
+  - 论文按页分块并写入 `chunks` 索引
+  - 每次提问先检索相关片段，再让模型回答
+  - 回答要求给出页码引用（如 `[Page 7]`）
 
 ## 技术栈
 
@@ -49,7 +52,7 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ## 目录结构
 
 - `backend/app/main.py`: API 入口与静态页面托管
-- `backend/app/services.py`: PDF 提取、摘要生成、问答逻辑
+- `backend/app/services.py`: PDF 提取、分块检索、摘要生成、问答逻辑
 - `backend/app/db.py`: SQLite 初始化与访问
 - `frontend/index.html`: 三选项卡 UI
 - `frontend/app.js`: 前端交互逻辑
@@ -59,5 +62,5 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ## 当前限制
 
 - 暂未做用户鉴权，默认单用户本地使用。
-- 对超长论文目前使用截断策略，可后续升级为分段检索。
+- 当前检索为词法打分（后续可升级为向量检索）。
 - “根据讨论自动细化总结”当前通过“重新总结”按钮手动触发，下一步可改为自动融合聊天记录。

@@ -1,6 +1,8 @@
 import json
 import os
+import re
 import sqlite3
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,13 +29,73 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def extract_text_from_pdf(pdf_path: Path) -> str:
+def extract_pages_from_pdf(pdf_path: Path) -> list[tuple[int, str]]:
     reader = PdfReader(str(pdf_path))
-    parts: list[str] = []
+    pages: list[tuple[int, str]] = []
     for idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
-        parts.append(f"\n\n[Page {idx}]\n{text}")
-    return "".join(parts).strip()
+        clean = re.sub(r"\s+", " ", text).strip()
+        pages.append((idx, clean))
+    return pages
+
+
+def build_full_text(pages: Iterable[tuple[int, str]]) -> str:
+    parts: list[str] = []
+    for page_no, text in pages:
+        parts.append(f"[Page {page_no}]\n{text}")
+    return "\n\n".join(parts).strip()
+
+
+def parse_pages_from_full_text(full_text: str) -> list[tuple[int, str]]:
+    matches = list(re.finditer(r"\[Page (\d+)\]\n", full_text))
+    if not matches:
+        text = re.sub(r"\s+", " ", full_text).strip()
+        return [(1, text)] if text else []
+
+    pages: list[tuple[int, str]] = []
+    for idx, match in enumerate(matches):
+        page_no = int(match.group(1))
+        start = match.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(full_text)
+        content = re.sub(r"\s+", " ", full_text[start:end]).strip()
+        pages.append((page_no, content))
+    return pages
+
+
+def _slice_text(text: str, max_chars: int, overlap: int) -> list[str]:
+    if not text:
+        return []
+
+    if overlap >= max_chars:
+        overlap = max_chars // 4
+
+    slices: list[str] = []
+    start = 0
+    while start < len(text):
+        end = min(len(text), start + max_chars)
+        chunk = text[start:end].strip()
+        if chunk:
+            slices.append(chunk)
+        if end >= len(text):
+            break
+        start = max(end - overlap, start + 1)
+    return slices
+
+
+def build_chunks(pages: list[tuple[int, str]]) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+    for page_no, text in pages:
+        if not text:
+            continue
+        for piece in _slice_text(text, max_chars=1400, overlap=220):
+            chunks.append(
+                {
+                    "page_start": page_no,
+                    "page_end": page_no,
+                    "content": piece,
+                }
+            )
+    return chunks
 
 
 def _trim_text(text: str, max_chars: int = 120000) -> str:
@@ -76,6 +138,89 @@ def _parse_json_from_text(text: str) -> dict[str, Any]:
     raise ServiceError("Model response did not contain valid JSON.")
 
 
+def _tokenize(text: str) -> list[str]:
+    tokens = re.findall(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{1,2}|[\u3040-\u30ff]{1,2}", text.lower())
+    return [t for t in tokens if len(t.strip()) > 0]
+
+
+def retrieve_relevant_chunks(paper_id: int, query: str, limit: int = 6) -> list[sqlite3.Row]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, page_start, page_end, content FROM chunks WHERE paper_id = ?",
+            (paper_id,),
+        ).fetchall()
+        if not rows:
+            paper = conn.execute("SELECT full_text FROM papers WHERE id = ?", (paper_id,)).fetchone()
+            full_text = paper["full_text"] if paper else None
+            if full_text:
+                pages = parse_pages_from_full_text(full_text)
+                chunks = build_chunks(pages)
+                _replace_chunks(conn, paper_id, chunks)
+                rows = conn.execute(
+                    "SELECT id, page_start, page_end, content FROM chunks WHERE paper_id = ?",
+                    (paper_id,),
+                ).fetchall()
+
+    if not rows:
+        return []
+
+    query_lower = query.lower().strip()
+    q_tokens = _tokenize(query)
+    scored: list[tuple[float, sqlite3.Row]] = []
+
+    for row in rows:
+        content = row["content"].lower()
+        score = 0.0
+
+        if query_lower and query_lower in content:
+            score += 8.0
+
+        for token in q_tokens:
+            count = content.count(token)
+            if count:
+                score += 1.0 + min(count, 3) * 0.9
+
+        if score == 0 and query_lower:
+            overlap = len(set(query_lower) & set(content))
+            score += overlap * 0.04
+
+        scored.append((score, row))
+
+    scored.sort(key=lambda item: (-item[0], item[1]["page_start"], item[1]["id"]))
+
+    if scored[0][0] <= 0:
+        fallback = sorted(rows, key=lambda r: (r["page_start"], r["id"]))
+        return fallback[:limit]
+    return [row for _, row in scored[:limit]]
+
+
+def format_source_hint(chunks: list[sqlite3.Row]) -> str:
+    if not chunks:
+        return "No source chunk retrieved"
+
+    refs: list[str] = []
+    for chunk in chunks:
+        if chunk["page_start"] == chunk["page_end"]:
+            refs.append(f"Page {chunk['page_start']}")
+        else:
+            refs.append(f"Page {chunk['page_start']}-{chunk['page_end']}")
+
+    unique_refs = list(dict.fromkeys(refs))
+    return "Retrieved context: " + ", ".join(unique_refs)
+
+
+def _render_context(chunks: list[sqlite3.Row]) -> str:
+    if not chunks:
+        return "(No chunk context available)"
+
+    context_parts: list[str] = []
+    for idx, chunk in enumerate(chunks, start=1):
+        context_parts.append(
+            f"[Chunk {idx} | Page {chunk['page_start']}-{chunk['page_end']}]\n{chunk['content']}"
+        )
+    return "\n\n".join(context_parts)
+
+
 def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
     if not OPENAI_API_KEY or OpenAI is None:
         return _default_summary(title)
@@ -100,28 +245,51 @@ def summarize_paper(title: str, full_text: str) -> dict[str, Any]:
 
 
 def generate_chat_reply(paper: sqlite3.Row, user_message: str) -> tuple[str, str | None]:
-    full_text = paper["full_text"] or ""
     summary = from_json(paper["summary_json"]) or {}
+    chunks = retrieve_relevant_chunks(paper["id"], user_message, limit=6)
+    source_hint = format_source_hint(chunks)
 
     if not OPENAI_API_KEY or OpenAI is None:
-        answer = "当前未配置模型。请先设置 OPENAI_API_KEY 以启用深度问答。"
-        hint = "No model configured"
-        return answer, hint
+        if chunks:
+            preview = chunks[0]["content"][:260]
+            answer = (
+                "当前未配置模型，已返回最相关片段。\n"
+                f"定位：{source_hint}\n"
+                f"片段预览：{preview}"
+            )
+        else:
+            answer = "当前未配置模型，且暂无可检索片段。请先上传并解析论文。"
+        return answer, source_hint
 
     client = OpenAI(api_key=OPENAI_API_KEY)
     prompt = (
-        "You are a research assistant. Answer in Chinese by default unless user asks other language. "
-        "When possible, include source location like [Page X]. If unsure, say uncertain.\n\n"
+        "You are a research assistant for scientific papers. "
+        "Answer in Chinese by default unless user asks other language. "
+        "Use only the retrieved chunks as evidence. "
+        "When answering, cite evidence with [Page X] or [Page X-Y]. "
+        "If evidence is insufficient, explicitly say uncertain.\n\n"
         f"Paper title: {paper['title']}\n"
         f"Current summary JSON: {json.dumps(summary, ensure_ascii=False)}\n\n"
-        f"Paper text:\n{_trim_text(full_text, max_chars=100000)}\n\n"
+        "Retrieved evidence chunks:\n"
+        f"{_render_context(chunks)}\n\n"
         f"User question: {user_message}"
     )
 
     response = client.responses.create(model=MODEL_CHAT, input=prompt)
     answer = response.output_text.strip()
-    hint = "See inline [Page X] citations from the assistant answer."
-    return answer, hint
+    return answer, source_hint
+
+
+def _replace_chunks(conn: sqlite3.Connection, paper_id: int, chunks: list[dict[str, Any]]) -> None:
+    conn.execute("DELETE FROM chunks WHERE paper_id = ?", (paper_id,))
+    for chunk in chunks:
+        conn.execute(
+            """
+            INSERT INTO chunks (paper_id, page_start, page_end, content, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (paper_id, chunk["page_start"], chunk["page_end"], chunk["content"], now_iso()),
+        )
 
 
 def process_paper(paper_id: int) -> None:
@@ -135,12 +303,16 @@ def process_paper(paper_id: int) -> None:
         )
 
     try:
-        text = extract_text_from_pdf(Path(paper["filepath"]))
-        summary = summarize_paper(paper["title"], text)
+        pages = extract_pages_from_pdf(Path(paper["filepath"]))
+        full_text = build_full_text(pages)
+        chunks = build_chunks(pages)
+        summary = summarize_paper(paper["title"], full_text)
+
         with get_conn() as conn:
+            _replace_chunks(conn, paper_id, chunks)
             conn.execute(
                 "UPDATE papers SET status = ?, full_text = ?, summary_json = ?, updated_at = ? WHERE id = ?",
-                ("completed", text, to_json(summary), now_iso(), paper_id),
+                ("completed", full_text, to_json(summary), now_iso(), paper_id),
             )
     except Exception as exc:  # pragma: no cover
         with get_conn() as conn:
