@@ -6,6 +6,8 @@
 - Added upload, parsing queue, PDF viewer, multilingual summary, and chat.
 - Added deduplication using content fingerprint + canonical title.
 - Added paper delete endpoint and UI action.
+- Added server-side PDF paging endpoint and UI paging controls.
+- Added close action for results detail panel.
 - Standardized summary semantics to:
   - Problem solved by this paper
   - Solution

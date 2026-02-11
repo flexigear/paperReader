@@ -43,9 +43,17 @@ List papers.
 
 Get paper detail, including summary and summary version metadata.
 
+Response includes:
+
+- `page_count`: total PDF pages (if readable).
+
 ## GET /api/papers/{paper_id}/pdf
 
 Return PDF content for inline rendering.
+
+## GET /api/papers/{paper_id}/pdf/page/{page_no}
+
+Return a single-page PDF (used for paging in the PAPER tab).
 
 ## GET /api/papers/{paper_id}/chat
 

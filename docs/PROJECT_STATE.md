@@ -17,7 +17,9 @@
   - `solution`: paper-proposed method solving that problem
   - `findings`: results obtained through that solution
 - `PAPER` tab inline PDF viewing.
+- `PAPER` tab paging via server-side single-page PDF endpoint.
 - `RESULTS` tab vertical list with paper title + status, open/delete actions.
+- `RESULTS` detail panel supports close action.
 - Paper chat with retrieved page hints.
 - Manual summary controls:
   - `重新总结` (re-run full paper summary)

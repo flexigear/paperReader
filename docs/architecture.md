@@ -6,6 +6,7 @@
 - Backend: FastAPI REST endpoints + background processing tasks.
 - Storage: SQLite (`data/paper_reader.db`) and local PDF files (`data/uploads/`).
 - Model: OpenAI Responses API (current runtime target: `gpt-5.2-pro`).
+- PDF viewing: server renders single-page PDFs for paging in the PAPER tab.
 
 ## Main Flow
 
